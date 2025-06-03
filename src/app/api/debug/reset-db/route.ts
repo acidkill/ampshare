@@ -1,22 +1,24 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { hardcodedUsers } from '@/lib/auth';
+import bcrypt from 'bcryptjs';
 
 export async function POST() {
   try {
     const db = await getDb();
-    
+
     // Clear existing users
     await db.run("DELETE FROM users");
     console.log("Cleared existing users");
-    
-    // Re-seed with hardcoded users
+
+    // Re-seed with hardcoded users (with hashed passwords)
     for (const user of hardcodedUsers) {
+      const hashedPassword = await bcrypt.hash(user.password, 10);
       await db.run(
         "INSERT INTO users (id, username, password, apartmentId, name, forcePasswordChange) VALUES (?, ?, ?, ?, ?, ?)",
         user.id,
         user.username,
-        user.password,
+        hashedPassword,
         user.apartmentId,
         user.name,
         user.forcePasswordChange ? 1 : 0

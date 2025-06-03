@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
+import bcrypt from 'bcryptjs';
 
 export async function POST(request: Request) {
   try {
@@ -16,15 +17,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: 'User not found' }, { status: 404 });
     }
 
-    // IMPORTANT: In a production app, use bcrypt.compare() for password verification
-    if (user.password !== currentPassword) {
+    // Use bcrypt to compare the current password with the hashed password in the database
+    const passwordMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!passwordMatch) {
       return NextResponse.json({ message: 'Current password is incorrect' }, { status: 400 });
     }
 
-    // IMPORTANT: In a production app, hash newPassword before storing
+    // Hash the new password before storing
+    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
     const result = await db.run(
       "UPDATE users SET password = ?, forcePasswordChange = 0 WHERE id = ?",
-      newPassword,
+      hashedNewPassword,
       userId
     );
 
