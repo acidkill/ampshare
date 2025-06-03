@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button"
 import type { ButtonProps } from "@/components/ui/button" // Import ButtonProps
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
-import { Sheet, SheetContent } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Tooltip,
@@ -173,7 +173,7 @@ const Sidebar = React.forwardRef<
       collapsible = "offcanvas",
       className,
       children,
-      ...props
+      ...props // These are div props
     },
     ref
   ) => {
@@ -196,7 +196,7 @@ const Sidebar = React.forwardRef<
 
     if (isMobile) {
       return (
-        <Sheet open={openMobile} onOpenChange={setOpenMobile} {...props}>
+        <Sheet open={openMobile} onOpenChange={setOpenMobile}>
           <SheetContent
             data-sidebar="sidebar"
             data-mobile="true"
@@ -208,6 +208,7 @@ const Sidebar = React.forwardRef<
             }
             side={side}
           >
+            <SheetTitle className="sr-only">Main Menu</SheetTitle>
             <div className="flex h-full w-full flex-col">{children}</div>
           </SheetContent>
         </Sheet>
@@ -217,11 +218,12 @@ const Sidebar = React.forwardRef<
     return (
       <div
         ref={ref}
-        className="group peer hidden md:block text-sidebar-foreground"
+        className={cn("group peer hidden md:block text-sidebar-foreground", className)}
         data-state={state}
         data-collapsible={state === "collapsed" ? collapsible : ""}
         data-variant={variant}
         data-side={side}
+        {...props} // Apply div props here
       >
         {/* This is what handles the sidebar gap on desktop */}
         <div
@@ -243,10 +245,9 @@ const Sidebar = React.forwardRef<
             // Adjust the padding for floating and inset variants.
             variant === "floating" || variant === "inset"
               ? "p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4)_+2px)]"
-              : "group-data-[collapsible=icon]:w-[--sidebar-width-icon] group-data-[side=left]:border-r group-data-[side=right]:border-l",
-            className
+              : "group-data-[collapsible=icon]:w-[--sidebar-width-icon] group-data-[side=left]:border-r group-data-[side=right]:border-l"
+            // className for this div is not taken from Sidebar props to avoid conflict with outer div
           )}
-          {...props}
         >
           <div
             data-sidebar="sidebar"
@@ -263,7 +264,7 @@ Sidebar.displayName = "Sidebar"
 
 const SidebarTrigger = React.forwardRef<
   React.ElementRef<typeof Button>,
-  ButtonProps // Use ButtonProps which includes asChild and children
+  ButtonProps
 >(({ className, onClick: propOnClick, children, asChild = false, ...restProps }, ref) => {
   const { toggleSidebar } = useSidebar()
 
@@ -278,11 +279,10 @@ const SidebarTrigger = React.forwardRef<
         propOnClick?.(event)
         toggleSidebar()
       }}
-      asChild={asChild} // Pass asChild to the underlying Button component
+      asChild={asChild}
       {...restProps}
     >
-      {/* Conditionally render children based on asChild prop */}
-      {asChild ? children : (
+      {asChild && children ? children : (
         <>
           <PanelLeft />
           <span className="sr-only">Toggle Sidebar</span>
@@ -769,3 +769,4 @@ export {
   SidebarTrigger,
   useSidebar,
 }
+
