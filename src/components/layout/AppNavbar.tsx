@@ -14,6 +14,7 @@ import {
 import { Bell, Flame, LogOut, Settings, UserCircle, Menu } from 'lucide-react';
 import Link from 'next/link';
 import { SidebarTrigger, useSidebar } from '@/components/ui/sidebar';
+import { ThemeToggle } from './ThemeToggle'; // Added import
 
 export function AppNavbar() {
   const { currentUser, logout } = useAuth();
@@ -30,11 +31,12 @@ export function AppNavbar() {
         {isMobile && <SidebarTrigger asChild><Button variant="ghost" size="icon"><Menu/></Button></SidebarTrigger>}
         <Link href="/dashboard" className="flex items-center gap-2 font-semibold text-primary">
           <Flame className="h-6 w-6" />
-          <span className="font-headline text-xl">AmpShare</span>
+          <span className="font-headline text-xl hidden md:inline">AmpShare</span>
         </Link>
       </div>
       
-      <div className="ml-auto flex items-center gap-4">
+      <div className="ml-auto flex items-center gap-2 md:gap-4"> {/* Adjusted gap for smaller screens */}
+        <ThemeToggle /> {/* Added ThemeToggle */}
         <Button variant="ghost" size="icon" className="rounded-full">
           <Bell className="h-5 w-5" />
           <span className="sr-only">Notifications</span>
