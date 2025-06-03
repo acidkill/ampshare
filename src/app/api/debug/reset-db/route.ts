@@ -34,6 +34,7 @@ export async function POST() {
     });
   } catch (error) {
     console.error('Error resetting database:', error);
-    return NextResponse.json({ message: 'Internal server error', error: error.message }, { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json({ message: 'Internal server error', error: errorMessage }, { status: 500 });
   }
 }
