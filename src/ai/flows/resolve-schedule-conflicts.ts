@@ -44,15 +44,17 @@ const ResolveScheduleConflictsOutputSchema = z.object({
 
 export type ResolveScheduleConflictsOutput = z.infer<typeof ResolveScheduleConflictsOutputSchema>;
 
-export async function resolveScheduleConflicts(input: ResolveScheduleConflictsInput): Promise<ResolveScheduleConflictsOutput> {
-  return resolveScheduleConflictsFlow(input);
+async function formatSchedule(schedule: any[]): Promise<string> {
+  return schedule.map(item => 
+    `- ${item.dayOfWeek}: ${item.applianceType} from ${item.startTime} to ${item.endTime}`
+  ).join('\n');
 }
 
-const resolveScheduleConflictsPrompt = ai.definePrompt({
-  name: 'resolveScheduleConflictsPrompt',
-  input: {schema: ResolveScheduleConflictsInputSchema},
-  output: {schema: ResolveScheduleConflictsOutputSchema},
-  prompt: `You are an AI assistant designed to detect and resolve scheduling conflicts for high-voltage appliances in a two-household building (Stensvoll and Nowak).
+async function runResolveScheduleConflictsPrompt(input: ResolveScheduleConflictsInput): Promise<ResolveScheduleConflictsOutput> {
+  const stensvollScheduleStr = await formatSchedule(input.stensvollSchedule);
+  const nowakScheduleStr = await formatSchedule(input.nowakSchedule);
+
+  const prompt = `You are an AI assistant designed to detect and resolve scheduling conflicts for high-voltage appliances in a two-household building (Stensvoll and Nowak).
 
 You must adhere to the following critical rules for identifying conflicts:
 1.  **Car Charger Limit:** A maximum of one car charger can be active simultaneously across both the Stensvoll and Nowak households. If schedules show more than one car charger operating at the same time on the same day, this is a conflict.
@@ -63,32 +65,40 @@ You will receive the schedules for both households. Identify any overlapping app
 Based on the usage history (if provided) and user preferences (if provided), suggest alternative times to resolve the conflicts. Prioritize resolving violations of the critical rules.
 
 Stensvoll Household Schedule:
-{{#each stensvollSchedule}} 
-- {{dayOfWeek}}: {{applianceType}} from {{startTime}} to {{endTime}}
-{{/each}}
+${stensvollScheduleStr}
 
 Nowak Household Schedule:
-{{#each nowakSchedule}}
-- {{dayOfWeek}}: {{applianceType}} from {{startTime}} to {{endTime}}
-{{/each}}
+${nowakScheduleStr}
 
-Usage History: {{{usageHistory}}}
-User Preferences: {{{userPreferences}}}
+Usage History: ${input.usageHistory || 'Not provided'}
+User Preferences: ${input.userPreferences || 'Not provided'}
 
-Output:
-If conflicts are detected, set 'conflictsDetected' to true and provide a clear 'conflictSummary' detailing each conflict, especially violations of the car charger and concurrent use rules.
-If no conflicts are detected, set 'conflictsDetected' to false and 'conflictSummary' can state that no conflicts were found or provide a positive affirmation.
-Provide 'suggestedTimeChanges' to resolve any identified conflicts. If no conflicts, this array can be empty.`,
-});
+Please respond with a JSON object in the following format:
+{
+  "conflictsDetected": boolean,
+  "conflictSummary": "detailed summary of conflicts or confirmation none were found",
+  "suggestedTimeChanges": [
+    {
+      "applianceType": "type of appliance",
+      "suggestedStartTime": "HH:mm",
+      "suggestedEndTime": "HH:mm",
+      "reason": "reason for the suggested change"
+    }
+  ]
+}
 
-const resolveScheduleConflictsFlow = ai.defineFlow(
-  {
-    name: 'resolveScheduleConflictsFlow',
-    inputSchema: ResolveScheduleConflictsInputSchema,
-    outputSchema: ResolveScheduleConflictsOutputSchema,
-  },
-  async input => {
-    const {output} = await resolveScheduleConflictsPrompt(input);
-    return output!;
+If no conflicts are detected, set 'conflictsDetected' to false and return an empty array for 'suggestedTimeChanges'.`;
+
+  const response = await ai.runLLM(prompt);
+  try {
+    const parsedResponse = JSON.parse(response);
+    return ResolveScheduleConflictsOutputSchema.parse(parsedResponse);
+  } catch (error) {
+    console.error('Error parsing AI response:', error);
+    throw new Error('Failed to parse AI response into the expected format');
   }
-);
+}
+
+export async function resolveScheduleConflicts(input: ResolveScheduleConflictsInput): Promise<ResolveScheduleConflictsOutput> {
+  return runResolveScheduleConflictsPrompt(input);
+}
