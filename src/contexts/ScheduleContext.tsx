@@ -7,126 +7,90 @@ import { useToast } from '@/hooks/use-toast';
 
 interface ScheduleContextType {
   schedules: Record<ApartmentId, ScheduledAppliance[]>;
-  addScheduleItem: (item: ScheduledAppliance) => Promise<void>;
-  removeScheduleItem: (apartmentId: ApartmentId, itemId: string) => Promise<void>;
-  updateScheduleItem: (item: ScheduledAppliance) => Promise<void>;
+  addScheduleItem: (item: ScheduledAppliance) => void;
+  removeScheduleItem: (apartmentId: ApartmentId, itemId: string) => void;
+  updateScheduleItem: (item: ScheduledAppliance) => void;
   getCombinedSchedule: () => ScheduledAppliance[];
   runConflictDetection: () => Promise<ResolveScheduleConflictsOutput | null>;
   loadingConflicts: boolean;
   conflictResolutionResult: ResolveScheduleConflictsOutput | null;
   clearConflictResult: () => void;
-  loadingSchedules: boolean;
 }
 
 export const ScheduleContext = createContext<ScheduleContextType | undefined>(undefined);
 
+const initialSchedules: Record<ApartmentId, ScheduledAppliance[]> = {
+  stensvoll: [], // Changed
+  nowak: [],     // Changed
+};
+
 export const ScheduleProvider = ({ children }: { children: ReactNode }) => {
-  const [schedules, setSchedules] = useState<Record<ApartmentId, ScheduledAppliance[]>>({
-    stensvoll: [],
-    nowak: [],
-  });
-  const [loadingSchedules, setLoadingSchedules] = useState(true);
+  const [schedules, setSchedules] = useState<Record<ApartmentId, ScheduledAppliance[]>>(initialSchedules);
   const [loadingConflicts, setLoadingConflicts] = useState(false);
   const [conflictResolutionResult, setConflictResolutionResult] = useState<ResolveScheduleConflictsOutput | null>(null);
   const { toast } = useToast();
 
-  const fetchSchedules = useCallback(async () => {
-    setLoadingSchedules(true);
-    try {
-      const response = await fetch('/api/schedules');
-      if (!response.ok) {
-        throw new Error('Failed to fetch schedules');
-      }
-      const data: ScheduledAppliance[] = await response.json();
-      const organizedSchedules: Record<ApartmentId, ScheduledAppliance[]> = {
-        stensvoll: data.filter(s => s.apartmentId === 'stensvoll'),
-        nowak: data.filter(s => s.apartmentId === 'nowak'),
-      };
-      setSchedules(organizedSchedules);
-    } catch (error) {
-      console.error("Error fetching schedules:", error);
-      toast({
-        title: "Error",
-        description: "Could not load schedules.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoadingSchedules(false);
-    }
-  }, [toast]);
-
+  // Load schedules from localStorage on mount
   useEffect(() => {
-    fetchSchedules();
-  }, [fetchSchedules]);
-
-  const addScheduleItem = useCallback(async (item: ScheduledAppliance) => {
     try {
-      const response = await fetch('/api/schedules', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(item),
-      });
-      if (!response.ok) {
-        throw new Error('Failed to add schedule item');
+      const storedSchedules = localStorage.getItem('ampShareSchedules');
+      if (storedSchedules) {
+        const parsedSchedules = JSON.parse(storedSchedules);
+        // Basic validation for new keys
+        if (parsedSchedules.stensvoll && parsedSchedules.nowak) {
+           setSchedules(parsedSchedules);
+        } else if (parsedSchedules.apartment1 && parsedSchedules.apartment2) {
+          // Migration from old keys
+          setSchedules({
+            stensvoll: parsedSchedules.apartment1,
+            nowak: parsedSchedules.apartment2,
+          });
+        }
       }
-      const newSchedule = await response.json();
-      setSchedules(prev => ({
-        ...prev,
-        [newSchedule.apartmentId]: [...prev[newSchedule.apartmentId], newSchedule],
-      }));
-      toast({ title: "Schedule Added", description: `${newSchedule.applianceType} scheduled for ${newSchedule.dayOfWeek} at ${newSchedule.startTime}.` });
     } catch (error) {
-      console.error("Error adding schedule item:", error);
-      toast({ title: "Error", description: "Could not add schedule item.", variant: "destructive" });
+      console.error("Failed to load schedules from localStorage", error);
     }
+  }, []);
+
+  // Save schedules to localStorage whenever they change
+  useEffect(() => {
+    try {
+      localStorage.setItem('ampShareSchedules', JSON.stringify(schedules));
+    } catch (error) {
+      console.error("Failed to save schedules to localStorage", error);
+    }
+  }, [schedules]);
+
+
+  const addScheduleItem = useCallback((item: ScheduledAppliance) => {
+    setSchedules(prev => ({
+      ...prev,
+      [item.apartmentId]: [...prev[item.apartmentId], item],
+    }));
+    toast({ title: "Schedule Added", description: `${item.applianceType} scheduled for ${item.dayOfWeek} at ${item.startTime}.` });
   }, [toast]);
 
-  const removeScheduleItem = useCallback(async (apartmentId: ApartmentId, itemId: string) => {
-    try {
-      const response = await fetch(`/api/schedules/${itemId}`, {
-        method: 'DELETE',
-      });
-      if (!response.ok) {
-        throw new Error('Failed to remove schedule item');
-      }
-      setSchedules(prev => ({
-        ...prev,
-        [apartmentId]: prev[apartmentId].filter(schedule => schedule.id !== itemId),
-      }));
-      toast({ title: "Schedule Removed", description: "The scheduled item has been removed." });
-    } catch (error) {
-      console.error("Error removing schedule item:", error);
-      toast({ title: "Error", description: "Could not remove schedule item.", variant: "destructive" });
-    }
+  const removeScheduleItem = useCallback((apartmentId: ApartmentId, itemId: string) => {
+    setSchedules(prev => ({
+      ...prev,
+      [apartmentId]: prev[apartmentId].filter(schedule => schedule.id !== itemId),
+    }));
+    toast({ title: "Schedule Removed", description: "The scheduled item has been removed." });
   }, [toast]);
 
-  const updateScheduleItem = useCallback(async (item: ScheduledAppliance) => {
-    try {
-      const response = await fetch(`/api/schedules/${item.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(item),
-      });
-      if (!response.ok) {
-        throw new Error('Failed to update schedule item');
-      }
-      const updatedSchedule = await response.json();
-      setSchedules(prev => ({
-        ...prev,
-        [updatedSchedule.apartmentId]: prev[updatedSchedule.apartmentId].map(schedule => schedule.id === updatedSchedule.id ? updatedSchedule : schedule),
-      }));
-      toast({ title: "Schedule Updated", description: `The schedule for ${updatedSchedule.applianceType} has been updated.` });
-    } catch (error) {
-      console.error("Error updating schedule item:", error);
-      toast({ title: "Error", description: "Could not update schedule item.", variant: "destructive" });
-    }
+  const updateScheduleItem = useCallback((item: ScheduledAppliance) => {
+    setSchedules(prev => ({
+      ...prev,
+      [item.apartmentId]: prev[item.apartmentId].map(schedule => schedule.id === item.id ? item : schedule),
+    }));
+    toast({ title: "Schedule Updated", description: `The schedule for ${item.applianceType} has been updated.` });
   }, [toast]);
 
   const getCombinedSchedule = useCallback(() => {
     return [...schedules.stensvoll, ...schedules.nowak];
   }, [schedules]);
 
-  const mapToAIInput = (scheduledItems: ScheduledAppliance[], apartmentName: "Stensvoll" | "Nowak"): AIApplianceInput[] => {
+  const mapToAIInput = (scheduledItems: ScheduledAppliance[], apartmentName: "Stensvoll" | "Nowak"): AIApplianceInput[] => { // Changed
     return scheduledItems.map(item => ({
       applianceType: item.applianceType,
       startTime: item.startTime,
@@ -135,28 +99,31 @@ export const ScheduleProvider = ({ children }: { children: ReactNode }) => {
       dayOfWeek: item.dayOfWeek,
     }));
   };
-
+  
   const runConflictDetection = useCallback(async () => {
     setLoadingConflicts(true);
     setConflictResolutionResult(null);
     try {
       const input: ResolveScheduleConflictsInput = {
-        stensvollSchedule: mapToAIInput(schedules.stensvoll, "Stensvoll"),
-        nowakSchedule: mapToAIInput(schedules.nowak, "Nowak"),
+        stensvollSchedule: mapToAIInput(schedules.stensvoll, "Stensvoll"), // Changed
+        nowakSchedule: mapToAIInput(schedules.nowak, "Nowak"),       // Changed
+        // Optional fields, can be added later
+        // usageHistory: "...", 
+        // userPreferences: "..."
       };
       const result = await resolveScheduleConflicts(input);
       setConflictResolutionResult(result);
       if (result.conflictsDetected) {
         toast({
-          title: "Conflicts Detected!",
-          description: result.conflictSummary,
-          variant: "destructive",
-          duration: 10000,
+            title: "Conflicts Detected!",
+            description: result.conflictSummary,
+            variant: "destructive",
+            duration: 10000,
         });
       } else {
         toast({
-          title: "No Conflicts Found",
-          description: "The current schedule has no conflicts.",
+            title: "No Conflicts Found",
+            description: "The current schedule has no conflicts.",
         });
       }
       return result;
@@ -178,17 +145,16 @@ export const ScheduleProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   return (
-    <ScheduleContext.Provider value={{
-      schedules,
-      addScheduleItem,
-      removeScheduleItem,
-      updateScheduleItem,
+    <ScheduleContext.Provider value={{ 
+      schedules, 
+      addScheduleItem, 
+      removeScheduleItem, 
+      updateScheduleItem, 
       getCombinedSchedule,
       runConflictDetection,
       loadingConflicts,
       conflictResolutionResult,
-      clearConflictResult,
-      loadingSchedules,
+      clearConflictResult
     }}>
       {children}
     </ScheduleContext.Provider>
