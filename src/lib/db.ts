@@ -24,10 +24,14 @@ export async function getDb(): Promise<Database> {
 
 async function seedInitialUsers(db: Database) {
   try {
-    const count = await db.get("SELECT COUNT(*) as count FROM users");
-    if (count.count === 0) {
-      console.log("Seeding initial users...");
-      for (const user of hardcodedUsers) {
+    console.log("Checking and seeding initial users...");
+    
+    // Check each hardcoded user individually and insert/update as needed
+    for (const user of hardcodedUsers) {
+      const existingUser = await db.get("SELECT * FROM users WHERE id = ?", user.id);
+      
+      if (!existingUser) {
+        console.log(`Seeding user: ${user.username}`);
         // IMPORTANT: In a production application, passwords should ALWAYS be hashed (e.g., using bcrypt).
         // For this demonstration, they are stored as plain text.
         await db.run(
@@ -39,11 +43,15 @@ async function seedInitialUsers(db: Database) {
           user.name,
           user.forcePasswordChange ? 1 : 0 // SQLite stores booleans as 0 or 1
         );
+      } else {
+        console.log(`User ${user.username} already exists in database`);
       }
-      console.log("Initial users seeded successfully.");
-    } else {
-      console.log("Users already exist, skipping seeding.");
     }
+    
+    // Verify all users are properly seeded
+    const finalCount = await db.get("SELECT COUNT(*) as count FROM users");
+    console.log(`Total users in database: ${finalCount.count}`);
+    
   } catch (error) {
     console.error("Error seeding initial users:", error);
   }
