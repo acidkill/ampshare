@@ -17,6 +17,20 @@ import { ALL_APPLIANCES, ALL_DAYS, getApartmentDisplayName } from '@/types';
 import { getApplianceName } from '@/components/icons/ApplianceIcons';
 import React, { useState, useEffect } from 'react';
 
+// Helper to get current day name
+const getCurrentDayName = (): DayOfWeek => {
+  // Intl.DateTimeFormat is robust for getting day names in a specific locale.
+  // Make sure the output matches your DayOfWeek type exactly (e.g., "Monday", "Tuesday").
+  const dayName = new Intl.DateTimeFormat('en-US', { weekday: 'long' }).format(new Date()) as DayOfWeek;
+  if (ALL_DAYS.includes(dayName)) {
+    return dayName;
+  }
+  // Fallback, though unlikely for 'en-US' & 'long'. Adjust if your DayOfWeek has different casing or names.
+  console.warn("Could not determine current day of week reliably, defaulting to Monday.");
+  return 'Monday';
+};
+
+
 const scheduleSchema = z.object({
   applianceType: z.custom<ApplianceType>(val => ALL_APPLIANCES.includes(val as ApplianceType), "Invalid appliance type"),
   dayOfWeek: z.custom<DayOfWeek>(val => ALL_DAYS.includes(val as DayOfWeek), "Invalid day of week"),
@@ -27,7 +41,7 @@ const scheduleSchema = z.object({
   if (data.startTime && data.endTime) {
     return data.startTime < data.endTime;
   }
-  return true; // Don't validate if one is empty (during initial input)
+  return true; 
 }, {
   message: "End time must be after start time",
   path: ["endTime"],
@@ -54,10 +68,10 @@ const getInitialFormValues = (existingSchedule?: ScheduledAppliance): ScheduleFo
     };
   }
   return {
-    applianceType: undefined as unknown as ApplianceType, // For Select placeholder
-    dayOfWeek: undefined as unknown as DayOfWeek, // For Select placeholder
-    startTime: '', // Initialize as empty string
-    endTime: '',   // Initialize as empty string
+    applianceType: undefined as unknown as ApplianceType, 
+    dayOfWeek: undefined as unknown as DayOfWeek, 
+    startTime: '', 
+    endTime: '',  
     description: '',
   };
 };
@@ -76,7 +90,6 @@ export function AddScheduleDialog({ apartmentId, existingSchedule, triggerButton
   });
 
   useEffect(() => {
-    // Reset form when existingSchedule changes or dialog opens/closes for an existing schedule
     form.reset(getInitialFormValues(existingSchedule));
   }, [existingSchedule, isOpen, form]);
 
@@ -86,6 +99,15 @@ export function AddScheduleDialog({ apartmentId, existingSchedule, triggerButton
   const apartmentDisplayName = getApartmentDisplayName(apartmentId);
 
   const onSubmit = (data: ScheduleFormValues) => {
+    // Restriction: Cannot create new schedule for the current day of the week
+    if (!existingSchedule && data.dayOfWeek === getCurrentDayName()) {
+      form.setError("dayOfWeek", {
+        type: "manual",
+        message: "Schedules cannot be created for the current day. Please select a different day.",
+      });
+      return;
+    }
+
     if (existingSchedule) {
       updateScheduleItem({
         ...existingSchedule,
@@ -101,14 +123,13 @@ export function AddScheduleDialog({ apartmentId, existingSchedule, triggerButton
       });
     }
     setIsOpen(false); 
-    // Form will be reset by useEffect or on next open
   };
   
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
     if (!open) {
-      // Reset form to initial state when dialog is closed
       form.reset(getInitialFormValues(existingSchedule));
+      form.clearErrors("dayOfWeek"); // Clear current day error when dialog closes
     }
   };
 
@@ -119,7 +140,7 @@ export function AddScheduleDialog({ apartmentId, existingSchedule, triggerButton
         <DialogHeader>
           <DialogTitle>{existingSchedule ? 'Edit Schedule' : 'Add New Schedule'}</DialogTitle>
           <DialogDescription>
-            {existingSchedule ? 'Update the details for this appliance usage.' : `Schedule an appliance for ${apartmentDisplayName}.`}
+            {existingSchedule ? 'Update the details for this appliance usage.' : `Schedule an appliance for ${apartmentDisplayName}. Note: Schedules cannot be set for the current day of the week.`}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -160,7 +181,9 @@ export function AddScheduleDialog({ apartmentId, existingSchedule, triggerButton
                     </FormControl>
                     <SelectContent>
                       {ALL_DAYS.map(day => (
-                        <SelectItem key={day} value={day}>{day}</SelectItem>
+                        <SelectItem key={day} value={day} disabled={!existingSchedule && day === getCurrentDayName()}>
+                          {day} {!existingSchedule && day === getCurrentDayName() ? '(Not allowed for today)' : ''}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -222,3 +245,4 @@ export function AddScheduleDialog({ apartmentId, existingSchedule, triggerButton
   );
 }
 
+    

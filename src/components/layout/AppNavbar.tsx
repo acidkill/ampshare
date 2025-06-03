@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useAuth } from '@/hooks/useAuth';
@@ -14,7 +15,7 @@ import {
 import { Bell, Flame, LogOut, Settings, UserCircle, Menu } from 'lucide-react';
 import Link from 'next/link';
 import { SidebarTrigger, useSidebar } from '@/components/ui/sidebar';
-import { ThemeToggle } from './ThemeToggle'; // Added import
+import { ThemeToggle } from './ThemeToggle'; 
 
 export function AppNavbar() {
   const { currentUser, logout } = useAuth();
@@ -24,20 +25,22 @@ export function AppNavbar() {
     const names = name.split(' ');
     return names.map((n) => n[0]).join('').toUpperCase();
   };
+  
+  const isPasswordChangeForced = currentUser?.forcePasswordChange;
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background/80 px-4 backdrop-blur-md md:px-6">
       <div className="flex items-center gap-2">
-        {isMobile && <SidebarTrigger asChild><Button variant="ghost" size="icon"><Menu/></Button></SidebarTrigger>}
-        <Link href="/dashboard" className="flex items-center gap-2 font-semibold text-primary">
+        {isMobile && <SidebarTrigger asChild><Button variant="ghost" size="icon" disabled={isPasswordChangeForced}><Menu/></Button></SidebarTrigger>}
+        <Link href={isPasswordChangeForced ? "#" : "/dashboard"} className={`flex items-center gap-2 font-semibold text-primary ${isPasswordChangeForced ? 'pointer-events-none opacity-50' : ''}`}>
           <Flame className="h-6 w-6" />
           <span className="font-headline text-xl hidden md:inline">AmpShare</span>
         </Link>
       </div>
       
-      <div className="ml-auto flex items-center gap-2 md:gap-4"> {/* Adjusted gap for smaller screens */}
-        <ThemeToggle /> {/* Added ThemeToggle */}
-        <Button variant="ghost" size="icon" className="rounded-full">
+      <div className="ml-auto flex items-center gap-2 md:gap-4">
+        <ThemeToggle /> 
+        <Button variant="ghost" size="icon" className="rounded-full" disabled={isPasswordChangeForced}>
           <Bell className="h-5 w-5" />
           <span className="sr-only">Notifications</span>
         </Button>
@@ -61,16 +64,18 @@ export function AppNavbar() {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
+              <DropdownMenuItem disabled={isPasswordChangeForced}>
                 <UserCircle className="mr-2 h-4 w-4" />
                 Profile
               </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Settings className="mr-2 h-4 w-4" />
-                Settings
+              <DropdownMenuItem asChild>
+                <Link href="/settings">
+                  <Settings className="mr-2 h-4 w-4" />
+                  Settings
+                </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={logout}>
+              <DropdownMenuItem onClick={logout} disabled={isPasswordChangeForced}>
                 <LogOut className="mr-2 h-4 w-4" />
                 Log out
               </DropdownMenuItem>
@@ -81,3 +86,5 @@ export function AppNavbar() {
     </header>
   );
 }
+
+    

@@ -1,6 +1,6 @@
 
 export type ApplianceType = 'car-charger' | 'oven' | 'washing-machine' | 'dryer' | 'dishwasher';
-export type ApartmentId = 'stensvoll' | 'nowak'; // Changed
+export type ApartmentId = 'stensvoll' | 'nowak'; 
 export type DayOfWeek = 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday' | 'Sunday';
 
 export const ALL_DAYS: DayOfWeek[] = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -24,6 +24,7 @@ export interface User {
   password?: string; // Only for local check, not stored in production like this
   apartmentId: ApartmentId;
   name: string;
+  forcePasswordChange?: boolean; // Added for prompting password change on first login
 }
 
 // For AI conflict resolution input, aligning with src/ai/flows/resolve-schedule-conflicts.ts
@@ -31,7 +32,7 @@ export interface AIApplianceInput {
   applianceType: string;
   startTime: string;
   endTime: string;
-  apartment: "Stensvoll" | "Nowak"; // Changed
+  apartment: "Stensvoll" | "Nowak"; 
   dayOfWeek: string;
 }
 
@@ -72,3 +73,5 @@ export const getApartmentDisplayName = (apartmentId: ApartmentId): string => {
   if (apartmentId === 'nowak') return 'Nowak';
   return 'Unknown Apartment';
 };
+
+    
