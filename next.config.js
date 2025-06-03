@@ -3,9 +3,11 @@ const nextConfig = {
   output: 'standalone',
   reactStrictMode: true,
   experimental: {
-    serverActions: true,
+    serverActions: {
+      bodySizeLimit: '2mb'
+    },
     externalDir: true,
-    serverComponentsExternalPackages: ['sqlite3']
+    serverExternalPackages: ['sqlite3']
   },
 };
 
