@@ -1,7 +1,6 @@
 'use client';
 
 import type { User } from '@/types';
-import { findUserByUsername, getUserById, updateUserPasswordInMockDB } from '@/lib/auth';
 import React, { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
@@ -25,16 +24,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const { toast } = useToast();
 
   useEffect(() => {
-    const storedUserId = localStorage.getItem('ampshare_userId');
-    if (storedUserId) {
-      const user = getUserById(storedUserId);
-      if (user) {
-        setCurrentUser(user);
-      } else {
-        localStorage.removeItem('ampshare_userId');
+    const loadUser = async () => {
+      const storedUserId = localStorage.getItem('ampshare_userId');
+      if (storedUserId) {
+        try {
+          const response = await fetch(`/api/auth/user/${storedUserId}`);
+          if (response.ok) {
+            const user = await response.json();
+            setCurrentUser(user);
+          } else {
+            localStorage.removeItem('ampshare_userId');
+          }
+        } catch (error) {
+          console.error('Error loading user:', error);
+          localStorage.removeItem('ampshare_userId');
+        }
       }
-    }
-    setLoading(false);
+      setLoading(false);
+    };
+
+    loadUser();
   }, []);
 
   useEffect(() => {
@@ -59,13 +68,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const login = async (username: string, password_DO_NOT_USE_IN_PROD: string): Promise<boolean> => {
     setLoading(true);
-    const user = findUserByUsername(username);
-    if (user && user.password === password_DO_NOT_USE_IN_PROD) {
-      setCurrentUser(user);
-      localStorage.setItem('ampshare_userId', user.id);
-      // Redirection is handled by the useEffect above
-      setLoading(false);
-      return true;
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ username, password: password_DO_NOT_USE_IN_PROD }),
+      });
+
+      if (response.ok) {
+        const user = await response.json();
+        setCurrentUser(user);
+        localStorage.setItem('ampshare_userId', user.id);
+        setLoading(false);
+        return true;
+      }
+    } catch (error) {
+      console.error('Login error:', error);
     }
     setLoading(false);
     return false;
@@ -78,17 +98,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [router]);
 
   const changePassword = useCallback(async (userId: string, currentPassword_DO_NOT_USE_IN_PROD: string, newPassword_DO_NOT_USE_IN_PROD: string): Promise<{ success: boolean; message: string }> => {
-    const user = getUserById(userId);
-    if (!user || user.password !== currentPassword_DO_NOT_USE_IN_PROD) {
-      return { success: false, message: "Current password incorrect." };
-    }
+    try {
+      const response = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          userId, 
+          currentPassword: currentPassword_DO_NOT_USE_IN_PROD,
+          newPassword: newPassword_DO_NOT_USE_IN_PROD 
+        }),
+      });
 
-    const updatedUser = updateUserPasswordInMockDB(userId, newPassword_DO_NOT_USE_IN_PROD);
-    if (updatedUser) {
-      setCurrentUser(updatedUser); 
-      return { success: true, message: "Password updated successfully." };
+      if (response.ok) {
+        const updatedUser = await response.json();
+        setCurrentUser(updatedUser);
+        return { success: true, message: "Password updated successfully." };
+      } else {
+        const error = await response.json();
+        return { success: false, message: error.message || "Failed to update password." };
+      }
+    } catch (error) {
+      console.error('Password change error:', error);
+      return { success: false, message: "Failed to update password." };
     }
-    return { success: false, message: "Failed to update password." };
   }, []);
   
   const updateCurrentUser = useCallback((user: User) => {

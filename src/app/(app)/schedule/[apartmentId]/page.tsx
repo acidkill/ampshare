@@ -3,7 +3,7 @@
 import { useParams } from 'next/navigation';
 import { useSchedule } from '@/hooks/useSchedule';
 import { useAuth } from '@/hooks/useAuth';
-import type { ApartmentId, DayOfWeek, ScheduledAppliance } from '@/types';
+import type { ApartmentId, DayOfWeek, ScheduledAppliance, User } from '@/types';
 import { ALL_DAYS, getApartmentDisplayName } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,7 +20,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import Link from 'next/link';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 
 export default function ApartmentSchedulePage() {
@@ -32,6 +32,28 @@ export default function ApartmentSchedulePage() {
   const [editingSchedule, setEditingSchedule] = useState<ScheduledAppliance | undefined>(undefined);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isUnplannedRequestDialogOpen, setIsUnplannedRequestDialogOpen] = useState(false); // Added
+  const [users, setUsers] = useState<User[]>([]);
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const response = await fetch('/api/users');
+        if (response.ok) {
+          const userData = await response.json();
+          setUsers(userData);
+        }
+      } catch (error) {
+        console.error('Error fetching users:', error);
+      }
+    };
+
+    fetchUsers();
+  }, []);
+
+  const getUserNameById = (userId: string): string => {
+    const user = users.find(u => u.id === userId);
+    return user ? user.name.split(' ')[0] : `User ${userId.substring(0,4)}`; // Show first name or short ID
+  };
 
   const apartmentDisplayName = getApartmentDisplayName(apartmentId);
 
@@ -168,10 +190,3 @@ export default function ApartmentSchedulePage() {
   );
 }
 
-// Helper function to get user name by ID (you might want to move this to a utility or auth file)
-// For now, it's a simplified version. In a real app, this would fetch from your user data source.
-import { hardcodedUsers } from '@/lib/auth'; 
-const getUserNameById = (userId: string): string => {
-  const user = hardcodedUsers.find(u => u.id === userId);
-  return user ? user.name.split(' ')[0] : `User ${userId.substring(0,4)}`; // Show first name or short ID
-};

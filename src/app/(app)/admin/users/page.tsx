@@ -2,13 +2,44 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { hardcodedUsers } from '@/lib/auth';
-import { getApartmentDisplayName } from '@/types';
+import { getApartmentDisplayName, User } from '@/types';
 import { Users, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useEffect, useState } from 'react';
 
 export default function UserManagementPage() {
-  const users = hardcodedUsers; // In a real app, this would come from a database or auth provider
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const response = await fetch('/api/users');
+        if (response.ok) {
+          const userData = await response.json();
+          setUsers(userData);
+        }
+      } catch (error) {
+        console.error('Error fetching users:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUsers();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="container mx-auto py-8">
+        <Card className="shadow-lg">
+          <CardContent className="p-8">
+            <div className="text-center">Loading users...</div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto py-8">
