@@ -2,12 +2,12 @@
 const nextConfig = {
   output: 'standalone',
   reactStrictMode: true,
+  serverExternalPackages: ['sqlite3'],
   experimental: {
     serverActions: {
       bodySizeLimit: '2mb'
     },
-    externalDir: true,
-    serverExternalPackages: ['sqlite3']
+    externalDir: true
   },
 };
 
