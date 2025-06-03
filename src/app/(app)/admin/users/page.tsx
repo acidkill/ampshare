@@ -1,8 +1,10 @@
+
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { hardcodedUsers } from '@/lib/auth';
+import { getApartmentDisplayName } from '@/types';
 import { Users, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -30,7 +32,7 @@ export default function UserManagementPage() {
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Username</TableHead>
-                <TableHead>Apartment</TableHead>
+                <TableHead>Household</TableHead>
                 <TableHead className="text-right">Actions (Admin)</TableHead>
               </TableRow>
             </TableHeader>
@@ -39,7 +41,7 @@ export default function UserManagementPage() {
                 <TableRow key={user.id}>
                   <TableCell className="font-medium">{user.name}</TableCell>
                   <TableCell>{user.username}</TableCell>
-                  <TableCell>{user.apartmentId === 'apartment1' ? 'Apartment 1' : 'Apartment 2'}</TableCell>
+                  <TableCell>{getApartmentDisplayName(user.apartmentId)}</TableCell>
                   <TableCell className="text-right">
                     <Button variant="outline" size="sm" disabled>Edit</Button>
                     <Button variant="destructive" size="sm" className="ml-2" disabled>Delete</Button>

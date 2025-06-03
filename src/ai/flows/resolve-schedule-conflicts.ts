@@ -1,3 +1,4 @@
+
 // src/ai/flows/resolve-schedule-conflicts.ts
 'use server';
 
@@ -16,13 +17,13 @@ const ApplianceSchema = z.object({
   applianceType: z.string().describe('The type of appliance (e.g., car charger, oven, washing machine).'),
   startTime: z.string().describe('The start time of the appliance usage (e.g., HH:mm).'),
   endTime: z.string().describe('The end time of the appliance usage (e.g., HH:mm).'),
-  apartment: z.string().describe('The apartment number using the appliance (e.g., Apartment 1, Apartment 2).'),
+  apartment: z.string().describe('The apartment name using the appliance (e.g., Stensvoll, Nowak).'), // Changed
   dayOfWeek: z.string().describe('The day of the week for the appliance usage (e.g., Monday, Tuesday).'),
 });
 
 const ResolveScheduleConflictsInputSchema = z.object({
-  apartment1Schedule: z.array(ApplianceSchema).describe('The schedule for apartment 1.'),
-  apartment2Schedule: z.array(ApplianceSchema).describe('The schedule for apartment 2.'),
+  stensvollSchedule: z.array(ApplianceSchema).describe('The schedule for Stensvoll household.'), // Changed
+  nowakSchedule: z.array(ApplianceSchema).describe('The schedule for Nowak household.'), // Changed
   usageHistory: z.string().optional().describe('Historical appliance usage data for both apartments.'),
   userPreferences: z.string().optional().describe('User preferences for appliance usage scheduling.'),
 });
@@ -52,19 +53,19 @@ const resolveScheduleConflictsPrompt = ai.definePrompt({
   name: 'resolveScheduleConflictsPrompt',
   input: {schema: ResolveScheduleConflictsInputSchema},
   output: {schema: ResolveScheduleConflictsOutputSchema},
-  prompt: `You are an AI assistant designed to detect and resolve scheduling conflicts for high-voltage appliances in a two-apartment building.
+  prompt: `You are an AI assistant designed to detect and resolve scheduling conflicts for high-voltage appliances in a two-household building (Stensvoll and Nowak).
 
-You will receive the schedules for both apartments, and you should identify any overlapping appliance usage.
+You will receive the schedules for both households, and you should identify any overlapping appliance usage.
 
 Based on the usage history and user preferences, suggest alternative times to resolve the conflicts.
 
-Apartment 1 Schedule:
-{{#each apartment1Schedule}}
+Stensvoll Household Schedule:
+{{#each stensvollSchedule}} 
 - {{dayOfWeek}}: {{applianceType}} from {{startTime}} to {{endTime}}
 {{/each}}
 
-Apartment 2 Schedule:
-{{#each apartment2Schedule}}
+Nowak Household Schedule:
+{{#each nowakSchedule}}
 - {{dayOfWeek}}: {{applianceType}} from {{startTime}} to {{endTime}}
 {{/each}}
 

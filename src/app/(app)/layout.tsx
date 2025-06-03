@@ -1,3 +1,4 @@
+
 'use client';
 
 import { AppNavbar } from '@/components/layout/AppNavbar';
@@ -16,7 +17,7 @@ import {
   SidebarInset,
   SidebarTrigger,
 } from '@/components/ui/sidebar';
-import { Flame, LayoutDashboard, CalendarDays, Users, Zap, ShieldAlert, Power, Settings } from 'lucide-react';
+import { Flame, LayoutDashboard, CalendarDays, Users, Zap, Power, Settings } from 'lucide-react'; // Removed ShieldAlert
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -42,8 +43,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   const navItems = [
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { href: '/schedule/apartment1', label: 'Apartment 1 Schedule', icon: CalendarDays },
-    { href: '/schedule/apartment2', label: 'Apartment 2 Schedule', icon: CalendarDays },
+    { href: '/schedule/stensvoll', label: 'Stensvoll Schedule', icon: CalendarDays },
+    { href: '/schedule/nowak', label: 'Nowak Schedule', icon: CalendarDays },
     { href: '/conflicts', label: 'Conflict Resolution', icon: Zap },
     { href: '/admin/users', label: 'User Management', icon: Users },
   ];

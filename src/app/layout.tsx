@@ -1,8 +1,10 @@
+
 import type {Metadata} from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ScheduleProvider } from '@/contexts/ScheduleContext';
+import { UnplannedRequestProvider } from '@/contexts/UnplannedRequestContext'; // Added
 import { ThemeProvider } from "next-themes";
 
 export const metadata: Metadata = {
@@ -30,8 +32,10 @@ export default function RootLayout({
         >
           <AuthProvider>
             <ScheduleProvider>
-              {children}
-              <Toaster />
+              <UnplannedRequestProvider> {/* Added */}
+                {children}
+                <Toaster />
+              </UnplannedRequestProvider> {/* Added */}
             </ScheduleProvider>
           </AuthProvider>
         </ThemeProvider>

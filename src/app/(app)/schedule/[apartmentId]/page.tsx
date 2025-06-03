@@ -1,15 +1,16 @@
+
 'use client';
 
 import { useParams } from 'next/navigation';
 import { useSchedule } from '@/hooks/useSchedule';
 import { useAuth } from '@/hooks/useAuth';
 import type { ApartmentId, DayOfWeek, ScheduledAppliance } from '@/types';
-import { ALL_DAYS } from '@/types';
+import { ALL_DAYS, getApartmentDisplayName } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { AddScheduleDialog } from '@/components/schedule/AddScheduleDialog';
 import { ApplianceIcon, getApplianceName } from '@/components/icons/ApplianceIcons';
-import { PlusCircle, Edit, Trash2, CalendarDays, Zap } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, CalendarDays, Zap, AlertTriangle } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -31,8 +32,10 @@ export default function ApartmentSchedulePage() {
   const [editingSchedule, setEditingSchedule] = useState<ScheduledAppliance | undefined>(undefined);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
-  if (!currentUser || !apartmentId || (apartmentId !== 'apartment1' && apartmentId !== 'apartment2')) {
-    return <p className="text-center text-red-500">Invalid apartment ID or not authorized.</p>;
+  const apartmentDisplayName = getApartmentDisplayName(apartmentId);
+
+  if (!currentUser || !apartmentId || (apartmentId !== 'stensvoll' && apartmentId !== 'nowak')) {
+    return <p className="text-center text-red-500">Invalid household ID or not authorized.</p>;
   }
 
   const apartmentSchedule = schedules[apartmentId] || [];
@@ -59,26 +62,33 @@ export default function ApartmentSchedulePage() {
   return (
     <div className="container mx-auto py-8">
       <Card className="shadow-lg">
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div>
             <CardTitle className="text-2xl font-headline text-primary flex items-center gap-2">
               <CalendarDays className="h-7 w-7"/>
-              Apartment {apartmentId === 'apartment1' ? '1' : '2'} Schedule
+              {apartmentDisplayName} Schedule
             </CardTitle>
             <CardDescription>
-              Manage your high-voltage appliance usage for Apartment {apartmentId === 'apartment1' ? '1' : '2'}.
+              Manage your high-voltage appliance usage for {apartmentDisplayName}.
             </CardDescription>
           </div>
-          {currentUser.apartmentId === apartmentId && (
-             <AddScheduleDialog
-              apartmentId={apartmentId}
-              triggerButton={
-                <Button>
-                  <PlusCircle className="mr-2 h-4 w-4" /> Add Schedule
+          <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+            {currentUser.apartmentId === apartmentId && (
+               <AddScheduleDialog
+                apartmentId={apartmentId}
+                triggerButton={
+                  <Button className="w-full sm:w-auto">
+                    <PlusCircle className="mr-2 h-4 w-4" /> Add Schedule
+                  </Button>
+                }
+              />
+            )}
+             {currentUser.apartmentId === apartmentId && (
+                <Button variant="outline" className="w-full sm:w-auto" onClick={() => alert("Unplanned request dialog to be implemented.")}>
+                    <AlertTriangle className="mr-2 h-4 w-4" /> Request Unplanned Use
                 </Button>
-              }
-            />
-          )}
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           {ALL_DAYS.map(day => (
@@ -128,7 +138,7 @@ export default function ApartmentSchedulePage() {
           ))}
           {apartmentSchedule.length === 0 && (
             <p className="text-center text-muted-foreground py-8">
-              No schedules added yet for this apartment. Click "Add Schedule" to get started.
+              No schedules added yet for this household. Click "Add Schedule" to get started.
             </p>
           )}
           {editingSchedule && (

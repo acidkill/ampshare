@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useState, ReactNode, useCallback, useEffect } from 'react';
@@ -20,8 +21,8 @@ interface ScheduleContextType {
 export const ScheduleContext = createContext<ScheduleContextType | undefined>(undefined);
 
 const initialSchedules: Record<ApartmentId, ScheduledAppliance[]> = {
-  apartment1: [],
-  apartment2: [],
+  stensvoll: [], // Changed
+  nowak: [],     // Changed
 };
 
 export const ScheduleProvider = ({ children }: { children: ReactNode }) => {
@@ -36,9 +37,15 @@ export const ScheduleProvider = ({ children }: { children: ReactNode }) => {
       const storedSchedules = localStorage.getItem('ampShareSchedules');
       if (storedSchedules) {
         const parsedSchedules = JSON.parse(storedSchedules);
-        // Basic validation
-        if (parsedSchedules.apartment1 && parsedSchedules.apartment2) {
+        // Basic validation for new keys
+        if (parsedSchedules.stensvoll && parsedSchedules.nowak) {
            setSchedules(parsedSchedules);
+        } else if (parsedSchedules.apartment1 && parsedSchedules.apartment2) {
+          // Migration from old keys
+          setSchedules({
+            stensvoll: parsedSchedules.apartment1,
+            nowak: parsedSchedules.apartment2,
+          });
         }
       }
     } catch (error) {
@@ -81,10 +88,10 @@ export const ScheduleProvider = ({ children }: { children: ReactNode }) => {
   }, [toast]);
 
   const getCombinedSchedule = useCallback(() => {
-    return [...schedules.apartment1, ...schedules.apartment2];
+    return [...schedules.stensvoll, ...schedules.nowak];
   }, [schedules]);
 
-  const mapToAIInput = (scheduledItems: ScheduledAppliance[], apartmentName: "Apartment 1" | "Apartment 2"): AIApplianceInput[] => {
+  const mapToAIInput = (scheduledItems: ScheduledAppliance[], apartmentName: "Stensvoll" | "Nowak"): AIApplianceInput[] => { // Changed
     return scheduledItems.map(item => ({
       applianceType: item.applianceType,
       startTime: item.startTime,
@@ -99,8 +106,8 @@ export const ScheduleProvider = ({ children }: { children: ReactNode }) => {
     setConflictResolutionResult(null);
     try {
       const input: ResolveScheduleConflictsInput = {
-        apartment1Schedule: mapToAIInput(schedules.apartment1, "Apartment 1"),
-        apartment2Schedule: mapToAIInput(schedules.apartment2, "Apartment 2"),
+        stensvollSchedule: mapToAIInput(schedules.stensvoll, "Stensvoll"), // Changed
+        nowakSchedule: mapToAIInput(schedules.nowak, "Nowak"),       // Changed
         // Optional fields, can be added later
         // usageHistory: "...", 
         // userPreferences: "..."

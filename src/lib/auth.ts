@@ -1,10 +1,11 @@
+
 import type { User } from '@/types';
 
 export const hardcodedUsers: User[] = [
-  { id: 'user1', username: 'alice_apt1', password: 'password1', apartmentId: 'apartment1', name: 'Alice (Apt 1)' },
-  { id: 'user2', username: 'bob_apt1', password: 'password1', apartmentId: 'apartment1', name: 'Bob (Apt 1)' },
-  { id: 'user3', username: 'charlie_apt2', password: 'password2', apartmentId: 'apartment2', name: 'Charlie (Apt 2)' },
-  { id: 'user4', username: 'dana_apt2', password: 'password2', apartmentId: 'apartment2', name: 'Dana (Apt 2)' },
+  { id: 'user1', username: 'alice_stensvoll', password: 'password1', apartmentId: 'stensvoll', name: 'Alice (Stensvoll)' },
+  { id: 'user2', username: 'bob_stensvoll', password: 'password1', apartmentId: 'stensvoll', name: 'Bob (Stensvoll)' },
+  { id: 'user3', username: 'charlie_nowak', password: 'password2', apartmentId: 'nowak', name: 'Charlie (Nowak)' },
+  { id: 'user4', username: 'dana_nowak', password: 'password2', apartmentId: 'nowak', name: 'Dana (Nowak)' },
 ];
 
 export const findUserByUsername = (username: string): User | undefined => {

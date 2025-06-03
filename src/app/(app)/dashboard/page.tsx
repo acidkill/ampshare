@@ -1,10 +1,11 @@
+
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { useSchedule } from '@/hooks/useSchedule';
-import { ScheduledAppliance, DayOfWeek, ALL_DAYS } from '@/types';
+import { ScheduledAppliance, DayOfWeek, ALL_DAYS, getApartmentDisplayName } from '@/types';
 import { ApplianceIcon, getApplianceName } from '@/components/icons/ApplianceIcons';
 import { AlertCircle, CalendarCheck, Zap } from 'lucide-react';
 import Link from 'next/link';
@@ -30,7 +31,7 @@ export default function DashboardPage() {
             Combined Appliance Schedule
           </CardTitle>
           <CardDescription>
-            Overview of all scheduled high-voltage appliance usage across both apartments.
+            Overview of all scheduled high-voltage appliance usage across both households.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -60,13 +61,13 @@ export default function DashboardPage() {
                     ) : (
                       <ul className="space-y-3">
                         {scheduleByDay[day].map(item => (
-                          <li key={item.id} className={`p-3 rounded-md border ${item.apartmentId === 'apartment1' ? 'bg-blue-50 border-blue-200' : 'bg-green-50 border-green-200'}`}>
+                          <li key={item.id} className={`p-3 rounded-md border ${item.apartmentId === 'stensvoll' ? 'bg-blue-50 border-blue-200' : 'bg-green-50 border-green-200'}`}>
                             <div className="flex items-center gap-3">
-                              <ApplianceIcon type={item.applianceType} className={`h-6 w-6 ${item.apartmentId === 'apartment1' ? 'text-blue-600' : 'text-green-600'}`} />
+                              <ApplianceIcon type={item.applianceType} className={`h-6 w-6 ${item.apartmentId === 'stensvoll' ? 'text-blue-600' : 'text-green-600'}`} />
                               <div>
                                 <p className="font-semibold">{getApplianceName(item.applianceType)}</p>
                                 <p className="text-xs text-muted-foreground">
-                                  {item.startTime} - {item.endTime} ({item.apartmentId === 'apartment1' ? 'Apt 1' : 'Apt 2'})
+                                  {item.startTime} - {item.endTime} ({getApartmentDisplayName(item.apartmentId)})
                                 </p>
                               </div>
                             </div>
@@ -94,15 +95,15 @@ export default function DashboardPage() {
         <CardHeader>
           <CardTitle className="text-2xl font-headline text-accent flex items-center gap-2">
             <AlertCircle className="h-7 w-7" />
-            Real-time Alerts
+            Real-time Alerts & Unplanned Requests
           </CardTitle>
           <CardDescription>
-            Notifications about upcoming appliance use and potential overloads. (Feature placeholder)
+            Notifications about upcoming appliance use, potential overloads, and manage unplanned usage requests. (Feature placeholder)
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground">No active alerts.</p>
-          {/* Placeholder for alert list */}
+          <p className="text-muted-foreground">No active alerts or pending requests.</p>
+          {/* Placeholder for alert list and unplanned request management */}
         </CardContent>
       </Card>
     </div>

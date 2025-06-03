@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -12,7 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useSchedule } from '@/hooks/useSchedule';
 import { useAuth } from '@/hooks/useAuth';
 import type { ScheduledAppliance, ApartmentId, ApplianceType, DayOfWeek } from '@/types';
-import { ALL_APPLIANCES, ALL_DAYS } from '@/types';
+import { ALL_APPLIANCES, ALL_DAYS, getApartmentDisplayName } from '@/types';
 import { getApplianceName } from '@/components/icons/ApplianceIcons';
 import React, { useState } from 'react';
 
@@ -60,6 +61,8 @@ export function AddScheduleDialog({ apartmentId, existingSchedule, triggerButton
 
   if (!currentUser) return null;
 
+  const apartmentDisplayName = getApartmentDisplayName(apartmentId);
+
   const onSubmit = (data: ScheduleFormValues) => {
     if (existingSchedule) {
       updateScheduleItem({
@@ -99,7 +102,7 @@ export function AddScheduleDialog({ apartmentId, existingSchedule, triggerButton
         <DialogHeader>
           <DialogTitle>{existingSchedule ? 'Edit Schedule' : 'Add New Schedule'}</DialogTitle>
           <DialogDescription>
-            {existingSchedule ? 'Update the details for this appliance usage.' : `Schedule an appliance for Apartment ${apartmentId === 'apartment1' ? '1' : '2'}.`}
+            {existingSchedule ? 'Update the details for this appliance usage.' : `Schedule an appliance for ${apartmentDisplayName}.`}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
