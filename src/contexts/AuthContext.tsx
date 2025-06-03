@@ -13,7 +13,7 @@ interface AuthContextType {
   logout: () => void;
   loading: boolean;
   changePassword: (userId: string, currentPassword_DO_NOT_USE_IN_PROD: string, newPassword_DO_NOT_USE_IN_PROD: string) => Promise<{ success: boolean; message: string }>;
-  updateCurrentUser: (user: User) => void; // Added to update current user state from settings
+  updateCurrentUser: (user: User) => void; 
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -39,39 +39,44 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   useEffect(() => {
-    if (!loading && !currentUser && pathname !== '/login') {
-      router.replace('/login');
-    }
-    // Redirect to settings if forcePasswordChange is true, unless already on settings or login page
-    if (!loading && currentUser && currentUser.forcePasswordChange && pathname !== '/login' && !pathname.startsWith('/settings')) {
-       router.replace('/settings?firstLogin=true');
-    } else if (!loading && currentUser && !currentUser.forcePasswordChange && pathname === '/login') {
-       router.push('/dashboard');
-    }
+    if (loading) return;
 
-
+    if (!currentUser) {
+      if (pathname !== '/login' && !pathname.startsWith('/settings')) { // Allow settings if trying to reach it (e.g. forced redirect)
+        router.replace('/login');
+      }
+    } else {
+      if (currentUser.forcePasswordChange) {
+        if (!pathname.startsWith('/settings')) {
+          router.replace('/settings?firstLogin=true');
+        }
+      } else {
+        if (pathname === '/login' || pathname.startsWith('/settings?firstLogin=true')) { // If not forced and on login or initial settings redirect
+          router.replace('/dashboard');
+        }
+      }
+    }
   }, [currentUser, loading, router, pathname]);
 
   const login = async (username: string, password_DO_NOT_USE_IN_PROD: string): Promise<boolean> => {
+    setLoading(true);
     const user = findUserByUsername(username);
     if (user && user.password === password_DO_NOT_USE_IN_PROD) {
       setCurrentUser(user);
       localStorage.setItem('ampshare_userId', user.id);
-      if (user.forcePasswordChange) {
-        router.push('/settings?firstLogin=true');
-      } else {
-        router.push('/dashboard');
-      }
+      // Redirection is handled by the useEffect above
+      setLoading(false);
       return true;
     }
+    setLoading(false);
     return false;
   };
 
-  const logout = () => {
+  const logout = useCallback(() => {
     setCurrentUser(null);
     localStorage.removeItem('ampshare_userId');
-    router.push('/login');
-  };
+    router.push('/login'); // Use push for explicit logout action
+  }, [router]);
 
   const changePassword = useCallback(async (userId: string, currentPassword_DO_NOT_USE_IN_PROD: string, newPassword_DO_NOT_USE_IN_PROD: string): Promise<{ success: boolean; message: string }> => {
     const user = getUserById(userId);
@@ -79,15 +84,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return { success: false, message: "Current password incorrect." };
     }
 
-    // Password policy is handled by Zod schema in the form. Here we just update.
     const updatedUser = updateUserPasswordInMockDB(userId, newPassword_DO_NOT_USE_IN_PROD);
     if (updatedUser) {
-      setCurrentUser(updatedUser); // Update current user state
-      toast({ title: "Password Changed", description: "Your password has been successfully updated." });
+      setCurrentUser(updatedUser); 
       return { success: true, message: "Password updated successfully." };
     }
     return { success: false, message: "Failed to update password." };
-  }, [toast]);
+  }, []);
   
   const updateCurrentUser = useCallback((user: User) => {
     setCurrentUser(user);
@@ -96,15 +99,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <AuthContext.Provider value={{ currentUser, login, logout, loading, changePassword, updateCurrentUser }}>
-      {loading && pathname !== '/login' ? <FullPageLoader /> : children}
+      {/* Removed loader from here, AppLayout handles its own loader */}
+      {children}
     </AuthContext.Provider>
   );
 };
-
-const FullPageLoader = () => (
-  <div className="flex h-screen w-screen items-center justify-center bg-background">
-    <div className="h-16 w-16 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent"></div>
-  </div>
-);
-
-    

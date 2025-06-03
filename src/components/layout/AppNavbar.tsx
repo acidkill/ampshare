@@ -26,13 +26,24 @@ export function AppNavbar() {
     return names.map((n) => n[0]).join('').toUpperCase();
   };
   
-  const isPasswordChangeForced = currentUser?.forcePasswordChange;
+  const isPasswordChangeForced = !!currentUser?.forcePasswordChange;
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background/80 px-4 backdrop-blur-md md:px-6">
       <div className="flex items-center gap-2">
-        {isMobile && <SidebarTrigger asChild><Button variant="ghost" size="icon" disabled={isPasswordChangeForced}><Menu/></Button></SidebarTrigger>}
-        <Link href={isPasswordChangeForced ? "#" : "/dashboard"} className={`flex items-center gap-2 font-semibold text-primary ${isPasswordChangeForced ? 'pointer-events-none opacity-50' : ''}`}>
+        {isMobile && (
+          <SidebarTrigger asChild disabled={isPasswordChangeForced}>
+            <Button variant="ghost" size="icon">
+              <Menu/>
+            </Button>
+          </SidebarTrigger>
+        )}
+        <Link 
+          href={isPasswordChangeForced ? "#" : "/dashboard"} 
+          className={`flex items-center gap-2 font-semibold text-primary ${isPasswordChangeForced ? 'pointer-events-none opacity-50' : ''}`}
+          aria-disabled={isPasswordChangeForced}
+          tabIndex={isPasswordChangeForced ? -1 : undefined}
+        >
           <Flame className="h-6 w-6" />
           <span className="font-headline text-xl hidden md:inline">AmpShare</span>
         </Link>
@@ -66,7 +77,7 @@ export function AppNavbar() {
               <DropdownMenuSeparator />
               <DropdownMenuItem disabled={isPasswordChangeForced}>
                 <UserCircle className="mr-2 h-4 w-4" />
-                Profile
+                Profile (Placeholder)
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link href="/settings">
@@ -75,7 +86,7 @@ export function AppNavbar() {
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={logout} disabled={isPasswordChangeForced}>
+              <DropdownMenuItem onClick={logout} disabled={isPasswordChangeForced && window.location.pathname.startsWith('/settings?firstLogin=true')}>
                 <LogOut className="mr-2 h-4 w-4" />
                 Log out
               </DropdownMenuItem>
@@ -86,5 +97,3 @@ export function AppNavbar() {
     </header>
   );
 }
-
-    

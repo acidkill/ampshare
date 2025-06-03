@@ -15,7 +15,7 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarInset,
-  SidebarTrigger,
+  // SidebarTrigger, // Removed as AppNavbar handles its own trigger if needed
 } from '@/components/ui/sidebar';
 import { Flame, LayoutDashboard, CalendarDays, Users, Zap, Power, Settings } from 'lucide-react'; 
 import Link from 'next/link';
@@ -23,36 +23,33 @@ import { usePathname } from 'next/navigation';
 
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const { currentUser, loading } = useAuth();
+  const { currentUser, loading, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
-    if (!loading && !currentUser) {
+    if (!loading && !currentUser && pathname !== '/login' && !pathname.startsWith('/settings')) {
       router.replace('/login');
     }
-  }, [currentUser, loading, router]);
+  }, [currentUser, loading, router, pathname]);
 
-  if (loading || (!currentUser && !pathname.startsWith('/settings')) ) { // Allow settings page if redirecting for password change
-     // If loading, or no user and not trying to access settings page initially
-    if (!loading && !currentUser && pathname !== '/login' && !pathname.startsWith('/settings')) {
-      return ( // Avoid flash of loader if already on login/settings due to auth redirect
-         <div className="flex h-screen w-screen items-center justify-center bg-background">
-          <div className="h-16 w-16 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent"></div>
-        </div>
-      );
-    } else if (loading) {
-        return (
-         <div className="flex h-screen w-screen items-center justify-center bg-background">
-          <div className="h-16 w-16 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent"></div>
-        </div>
-      );
-    }
+  if (loading) {
+    return (
+       <div className="flex h-screen w-screen items-center justify-center bg-background">
+        <div className="h-16 w-16 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent"></div>
+      </div>
+    );
   }
   
-  // If user exists but needs to change password, AuthContext will redirect to /settings.
-  // The layout should still render for the /settings page.
-  const showSidebarAndNavbar = currentUser && (!currentUser.forcePasswordChange || pathname.startsWith('/settings'));
+  // If user is not logged in AND not trying to access settings (which might be a forced redirect), show loader or nothing.
+  // This prevents layout flash before AuthContext redirects.
+  if (!currentUser && !pathname.startsWith('/settings') && pathname !== '/login') {
+    return null; 
+  }
+
+  const isPasswordChangeForced = !!currentUser?.forcePasswordChange;
+  // Show sidebar and navbar if user exists AND (they are not forced to change password OR they are on the settings page)
+  const showSidebarAndNavbar = !!currentUser && (!isPasswordChangeForced || pathname.startsWith('/settings'));
 
 
   const navItems = [
@@ -63,12 +60,22 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     { href: '/admin/users', label: 'User Management', icon: Users },
   ];
 
+  const handleLogout = () => {
+    logout();
+  };
+  
+
   return (
     <SidebarProvider defaultOpen>
       {showSidebarAndNavbar && (
         <Sidebar variant="sidebar" collapsible="icon">
           <SidebarHeader className="border-b border-sidebar-border">
-            <Link href="/dashboard" className="flex items-center gap-2 text-lg font-semibold text-sidebar-primary group-data-[collapsible=icon]:justify-center">
+            <Link 
+              href={isPasswordChangeForced ? "#" : "/dashboard"} 
+              className={`flex items-center gap-2 text-lg font-semibold text-sidebar-primary group-data-[collapsible=icon]:justify-center ${isPasswordChangeForced ? 'pointer-events-none opacity-50' : ''}`}
+              aria-disabled={isPasswordChangeForced}
+              tabIndex={isPasswordChangeForced ? -1 : undefined}
+            >
               <Flame className="h-7 w-7" />
               <span className="font-headline group-data-[collapsible=icon]:hidden">AmpShare</span>
             </Link>
@@ -81,7 +88,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     asChild
                     isActive={pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href))}
                     tooltip={{ children: item.label, side: 'right', className: 'bg-sidebar text-sidebar-foreground border-sidebar-border' }}
-                    disabled={currentUser?.forcePasswordChange && !pathname.startsWith('/settings')} // Disable nav if password change is forced
+                    disabled={isPasswordChangeForced && !pathname.startsWith('/settings')}
                   >
                     <Link href={item.href}>
                       <item.icon />
@@ -95,7 +102,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <SidebarFooter className="border-t border-sidebar-border">
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip={{ children: 'Settings', side: 'right' }}>
+                <SidebarMenuButton 
+                  asChild 
+                  tooltip={{ children: 'Settings', side: 'right' }}
+                  isActive={pathname.startsWith('/settings')}
+                >
                   <Link href="/settings">
                     <Settings />
                     <span>Settings</span>
@@ -104,9 +115,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton 
-                    onClick={currentUser && !currentUser.forcePasswordChange ? () => {} : () => router.push('/login')} // Placeholder for logout, ensure it's not available if pass change needed
+                    onClick={handleLogout}
                     tooltip={{ children: 'Logout', side: 'right' }}
-                    disabled={currentUser?.forcePasswordChange && !pathname.startsWith('/settings')}
                 >
                   <Power />
                   <span>Logout</span>
@@ -118,12 +128,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       )}
       <SidebarInset>
         {showSidebarAndNavbar && <AppNavbar />}
-        <main className="flex-1 p-4 md:p-6 lg:p-8 bg-background">
+        <main className={`flex-1 p-4 md:p-6 lg:p-8 bg-background ${!showSidebarAndNavbar && !pathname.startsWith('/settings') ? 'h-screen flex items-center justify-center' : ''}`}>
           {children}
         </main>
       </SidebarInset>
     </SidebarProvider>
   );
 }
-
-    
