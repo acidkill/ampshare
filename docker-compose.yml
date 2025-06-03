@@ -4,7 +4,7 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "3000:3000" # Map host port 3000 to container port 3000
+      - "3917:3000" # Map host port 3000 to container port 3000
     environment:
       - DATABASE_PATH=/app/data/ampshare.db
       - NODE_ENV=production

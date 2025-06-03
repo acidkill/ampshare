@@ -26,7 +26,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const loadUser = async () => {
       const storedUserId = localStorage.getItem('ampshare_userId');
-      if (storedUserId) {
+      if (storedUserId && storedUserId !== 'undefined' && storedUserId !== 'null') { // Added more robust check
         try {
           const response = await fetch(`/api/auth/user/${storedUserId}`);
           if (response.ok) {
