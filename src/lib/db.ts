@@ -1,58 +1,74 @@
-import sqlite3 from 'sqlite3';
-import { open, Database } from 'sqlite';
-import { runMigrations } from './migrations';
-import { hardcodedUsers } from './auth'; // Import hardcoded users for initial seeding
-import { User } from '@/types';
+import Database from 'sqlite3';
+import { open } from 'sqlite';
+import path from 'path';
 
-let db: Database | null = null;
+// Get the database path from environment variables
+// Use a default path if not set, though it's better to always set it
+const dbPath = process.env.DATABASE_PATH || path.join(process.cwd(), 'data', 'ampshare.db');
 
-export async function getDb(): Promise<Database> {
-  if (db) {
-    return db;
+// Ensure the directory exists
+const dbDir = path.dirname(dbPath);
+import fs from 'fs';
+if (!fs.existsSync(dbDir)) {
+  fs.mkdirSync(dbDir, { recursive: true });
+}
+
+let dbInstance: Awaited<ReturnType<typeof open>> | null = null;
+
+export const getDb = async () => {
+  if (dbInstance) {
+    return dbInstance;
   }
 
-  db = await open({
-    filename: '/app/data/ampshare.db', // Path inside the Docker container, mounted to a persistent volume
-    driver: sqlite3.Database,
+  dbInstance = await open({
+    filename: dbPath,
+    driver: Database.Database,
   });
 
-  await runMigrations(db);
-  await seedInitialUsers(db);
+  // Run migrations or schema creation here
+  await dbInstance.exec(`
+    CREATE TABLE IF NOT EXISTS users (
+      id TEXT PRIMARY KEY,
+      username TEXT UNIQUE NOT NULL,
+      password TEXT NOT NULL, -- Store hashed passwords
+      apartmentId TEXT,
+      name TEXT,
+      forcePasswordChange BOOLEAN DEFAULT 0
+    );
 
-  return db;
-}
+    -- Add other tables here (e.g., for schedules)
+    CREATE TABLE IF NOT EXISTS schedules (
+      id TEXT PRIMARY KEY,
+      userId TEXT NOT NULL,
+      day TEXT NOT NULL,
+      time TEXT NOT NULL,
+      FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+    );
+  `);
 
-async function seedInitialUsers(db: Database) {
-  try {
-    console.log("Checking and seeding initial users...");
-    
-    // Check each hardcoded user individually and insert/update as needed
+  console.log(`Database initialized at ${dbPath}`);
+
+  // Optional: Seed initial users if the users table is empty
+  const userCount = await dbInstance.get('SELECT COUNT(*) as count FROM users');
+  if (userCount.count === 0) {
+    console.log('Seeding initial users...');
+    const { hardcodedUsers } = await import('./auth'); // Import hardcoded users for seeding
+    const bcrypt = await import('bcryptjs'); // Import bcrypt for hashing seed passwords
+
+    const insertStmt = await dbInstance.prepare(
+      'INSERT INTO users (id, username, password, apartmentId, name, forcePasswordChange) VALUES (?, ?, ?, ?, ?, ?)'
+    );
+
     for (const user of hardcodedUsers) {
-      const existingUser = await db.get("SELECT * FROM users WHERE id = ?", user.id);
-      
-      if (!existingUser) {
-        console.log(`Seeding user: ${user.username}`);
-        // IMPORTANT: In a production application, passwords should ALWAYS be hashed (e.g., using bcrypt).
-        // For this demonstration, they are stored as plain text.
-        await db.run(
-          "INSERT INTO users (id, username, password, apartmentId, name, forcePasswordChange) VALUES (?, ?, ?, ?, ?, ?)",
-          user.id,
-          user.username,
-          user.password,
-          user.apartmentId,
-          user.name,
-          user.forcePasswordChange ? 1 : 0 // SQLite stores booleans as 0 or 1
-        );
-      } else {
-        console.log(`User ${user.username} already exists in database`);
-      }
+      const hashedPassword = await bcrypt.hash(user.password, 10); // Hash the hardcoded password
+      await insertStmt.run(user.id, user.username, hashedPassword, user.apartmentId, user.name, user.forcePasswordChange ? 1 : 0);
     }
-    
-    // Verify all users are properly seeded
-    const finalCount = await db.get("SELECT COUNT(*) as count FROM users");
-    console.log(`Total users in database: ${finalCount.count}`);
-    
-  } catch (error) {
-    console.error("Error seeding initial users:", error);
+    await insertStmt.finalize();
+    console.log('Initial users seeded.');
   }
-}
+
+  return dbInstance;
+};
+
+// Call getDb to initialize the database on server startup
+getDb().catch(console.error);
