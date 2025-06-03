@@ -53,8 +53,12 @@ export const getDb = async () => {
     CREATE TABLE IF NOT EXISTS schedules (
       id TEXT PRIMARY KEY,
       userId TEXT NOT NULL,
-      day TEXT NOT NULL,
-      time TEXT NOT NULL,
+      applianceType TEXT,
+      startTime TEXT,
+      endTime TEXT,
+      dayOfWeek TEXT,
+      apartmentId TEXT,
+      description TEXT,
       FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
     );
   `);
