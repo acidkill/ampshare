@@ -1,4 +1,3 @@
-
 // src/ai/flows/resolve-schedule-conflicts.ts
 'use server';
 
@@ -93,5 +92,3 @@ const resolveScheduleConflictsFlow = ai.defineFlow(
     return output!;
   }
 );
-
-    

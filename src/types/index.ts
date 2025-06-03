@@ -1,6 +1,5 @@
-
 export type ApplianceType = 'car-charger' | 'oven' | 'washing-machine' | 'dryer' | 'dishwasher';
-export type ApartmentId = 'stensvoll' | 'nowak'; 
+export type ApartmentId = 'stensvoll' | 'nowak';
 export type DayOfWeek = 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday' | 'Sunday';
 
 export const ALL_DAYS: DayOfWeek[] = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -21,7 +20,7 @@ export interface ScheduledAppliance {
 export interface User {
   id: string;
   username: string;
-  password?: string; // Only for local check, not stored in production like this
+  // password?: string; // Removed from client-side type, never expose password
   apartmentId: ApartmentId;
   name: string;
   forcePasswordChange?: boolean; // Added for prompting password change on first login
@@ -32,7 +31,7 @@ export interface AIApplianceInput {
   applianceType: string;
   startTime: string;
   endTime: string;
-  apartment: "Stensvoll" | "Nowak"; 
+  apartment: "Stensvoll" | "Nowak";
   dayOfWeek: string;
 }
 
@@ -58,14 +57,14 @@ export interface UnplannedRequest {
   requesterApartmentId: ApartmentId;
   targetApartmentId: ApartmentId; // The apartment that needs to approve
   applianceType: ApplianceType;
-  dayOfWeek: DayOfWeek; 
+  dayOfWeek: DayOfWeek;
   startTime: string; // HH:mm
   endTime: string; // HH:mm
   reason: string;
   status: UnplannedRequestStatus;
   requestedAt: string; // ISO date string
   respondedAt?: string; // ISO date string
-  responderUserId?: string; 
+  responderUserId?: string;
 }
 
 export const getApartmentDisplayName = (apartmentId: ApartmentId): string => {
@@ -73,5 +72,3 @@ export const getApartmentDisplayName = (apartmentId: ApartmentId): string => {
   if (apartmentId === 'nowak') return 'Nowak';
   return 'Unknown Apartment';
 };
-
-    

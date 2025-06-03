@@ -1,4 +1,3 @@
-
 'use client';
 
 import { AppNavbar } from '@/components/layout/AppNavbar';

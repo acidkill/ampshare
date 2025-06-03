@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -244,5 +243,3 @@ export function AddScheduleDialog({ apartmentId, existingSchedule, triggerButton
     </Dialog>
   );
 }
-
-    

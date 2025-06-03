@@ -1,4 +1,3 @@
-
 'use client';
 
 import { PasswordChangeForm } from '@/components/auth/PasswordChangeForm';

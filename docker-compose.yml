@@ -7,12 +7,9 @@ services:
       dockerfile: Dockerfile
     ports:
       - "3000:3000" # Map host port 3000 to container port 3000
-    # environment:
-      # NODE_ENV: production # Already set in Dockerfile
-      # PORT: 3000 # If you need to override the port Next.js listens on inside the container
+    volumes:
+      - app_data:/app/data # Mount a named volume for persistent data
     restart: unless-stopped
-    # You can add volumes for development if needed, e.g.:
-    # volumes:
-    #   - .:/app
-    #   - /app/node_modules
-    #   - /app/.next
+
+volumes:
+  app_data: # Define the named volume
