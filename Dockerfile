@@ -11,9 +11,6 @@ RUN npm cache clean --force
 # Install dependencies with legacy peer deps to handle subpath exports
 RUN npm install --legacy-peer-deps
 
-# Install types for google-generative-ai
-RUN npm install --save-dev @types/google-generative-ai
-
 # Copy application files
 COPY . .
 
