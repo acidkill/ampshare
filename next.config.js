@@ -2,9 +2,8 @@
 const nextConfig = {
   output: 'standalone',
   reactStrictMode: true,
-  swcMinify: true,
   experimental: {
-    serverComponentsExternalPackages: ['sqlite3'],
+    serverExternalPackages: ['sqlite3'],
   },
 };
 

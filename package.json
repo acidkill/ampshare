@@ -40,7 +40,8 @@
     "@radix-ui/react-scroll-area": "^1.0.0",
     "@radix-ui/react-select": "^1.0.0",
     "@radix-ui/react-separator": "^1.0.0",
-    "@google/generative-ai": "^0.2.0"
+    "@google/generative-ai": "^0.2.0",
+    "@opentelemetry/exporter-jaeger": "^1.21.0"
   },
   "devDependencies": {
     "@types/node": "^20",

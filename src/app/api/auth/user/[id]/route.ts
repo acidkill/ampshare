@@ -3,10 +3,10 @@ import { getDb } from '@/lib/db';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
-    const { id } = params;
+    const { id } = context.params;
     const db = await getDb();
 
     const user = await db.get(
