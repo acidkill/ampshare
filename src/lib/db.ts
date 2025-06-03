@@ -4,16 +4,29 @@ import path from 'path';
 
 // Get the database path from environment variables
 // Use a default path if not set, though it's better to always set it
-const dbPath = process.env.DATABASE_PATH || path.join(process.cwd(), 'data', 'ampshare.db');
+const dbPath = process.env.DATABASE_PATH || '/app/data/ampshare.db';
 
 // Ensure the directory exists
 const dbDir = path.dirname(dbPath);
 import fs from 'fs';
 if (!fs.existsSync(dbDir)) {
-  fs.mkdirSync(dbDir, { recursive: true });
+  try {
+    fs.mkdirSync(dbDir, { recursive: true });
+  } catch (error) {
+    console.error('Error creating database directory:', error);
+    throw error;
+  }
 }
 
 let dbInstance: Awaited<ReturnType<typeof open>> | null = null;
+
+// Add error logging for database operations
+const handleDbError = (error: Error) => {
+  console.error('Database error:', error);
+  console.error('Database path:', dbPath);
+  console.error('Database directory:', dbDir);
+  throw error;
+};
 
 export const getDb = async () => {
   if (dbInstance) {

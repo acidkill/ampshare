@@ -29,12 +29,21 @@ ENV NODE_ENV production
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
+# Create data directory with correct permissions
+RUN mkdir -p /app/data && chown nextjs:nodejs /app/data
+
 # Copy built application from the builder stage
 # Correctly copy standalone output
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
+# Set permissions for the app directory
+RUN chown -R nextjs:nodejs /app
+
 USER nextjs
+
+# Ensure data directory exists with correct permissions
+RUN mkdir -p /app/data
 
 EXPOSE 3000
 
