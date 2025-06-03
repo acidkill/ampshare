@@ -9,6 +9,7 @@ import { ALL_DAYS, getApartmentDisplayName } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { AddScheduleDialog } from '@/components/schedule/AddScheduleDialog';
+import { UnplannedRequestDialog } from '@/components/schedule/UnplannedRequestDialog'; // Added
 import { ApplianceIcon, getApplianceName } from '@/components/icons/ApplianceIcons';
 import { PlusCircle, Edit, Trash2, CalendarDays, Zap, AlertTriangle } from 'lucide-react';
 import {
@@ -31,6 +32,7 @@ export default function ApartmentSchedulePage() {
 
   const [editingSchedule, setEditingSchedule] = useState<ScheduledAppliance | undefined>(undefined);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isUnplannedRequestDialogOpen, setIsUnplannedRequestDialogOpen] = useState(false); // Added
 
   const apartmentDisplayName = getApartmentDisplayName(apartmentId);
 
@@ -54,7 +56,6 @@ export default function ApartmentSchedulePage() {
 
   const handleCloseEditDialog = () => {
     setIsEditDialogOpen(false);
-    // Delay resetting editingSchedule to allow dialog to close smoothly
     setTimeout(() => setEditingSchedule(undefined), 300);
   };
 
@@ -84,9 +85,15 @@ export default function ApartmentSchedulePage() {
               />
             )}
              {currentUser.apartmentId === apartmentId && (
-                <Button variant="outline" className="w-full sm:w-auto" onClick={() => alert("Unplanned request dialog to be implemented.")}>
-                    <AlertTriangle className="mr-2 h-4 w-4" /> Request Unplanned Use
-                </Button>
+                <UnplannedRequestDialog // Changed
+                  isOpen={isUnplannedRequestDialogOpen}
+                  onOpenChange={setIsUnplannedRequestDialogOpen}
+                  triggerButton={
+                    <Button variant="outline" className="w-full sm:w-auto" onClick={() => setIsUnplannedRequestDialogOpen(true)}>
+                        <AlertTriangle className="mr-2 h-4 w-4" /> Request Unplanned Use
+                    </Button>
+                  }
+                />
             )}
           </div>
         </CardHeader>
@@ -117,7 +124,7 @@ export default function ApartmentSchedulePage() {
                           </div>
                         </TableCell>
                         <TableCell>{item.startTime} - {item.endTime}</TableCell>
-                        <TableCell>{item.userId === currentUser?.id ? 'You' : `User ${item.userId}`}</TableCell>
+                        <TableCell>{item.userId === currentUser?.id ? 'You' : getUserNameById(item.userId) }</TableCell> {/* Assuming getUserNameById exists or is added */}
                         <TableCell className="max-w-xs truncate">{item.description || '-'}</TableCell>
                         {currentUser.apartmentId === apartmentId && (
                           <TableCell className="text-right space-x-2">
@@ -161,3 +168,11 @@ export default function ApartmentSchedulePage() {
     </div>
   );
 }
+
+// Helper function to get user name by ID (you might want to move this to a utility or auth file)
+// For now, it's a simplified version. In a real app, this would fetch from your user data source.
+import { hardcodedUsers } from '@/lib/auth'; 
+const getUserNameById = (userId: string): string => {
+  const user = hardcodedUsers.find(u => u.id === userId);
+  return user ? user.name.split(' ')[0] : `User ${userId.substring(0,4)}`; // Show first name or short ID
+};
