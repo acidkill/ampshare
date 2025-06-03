@@ -17,13 +17,19 @@ export interface ScheduledAppliance {
   description?: string;
 }
 
+// Base user interface without password (for general use)
 export interface User {
   id: string;
   username: string;
-  password?: string; // Only for local check, not stored in production like this
+  password?: string; // Optional for general use since we don't expose passwords
   apartmentId: ApartmentId;
   name: string;
   forcePasswordChange?: boolean; // Added for prompting password change on first login
+}
+
+// Extended interface for seeding users where password is required
+export interface SeedUser extends Omit<User, 'password'> {
+  password: string; // Required for seeding
 }
 
 // For AI conflict resolution input, aligning with src/ai/flows/resolve-schedule-conflicts.ts
