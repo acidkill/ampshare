@@ -2,9 +2,9 @@ import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { ScheduledAppliance } from '@/types';
 
-export async function PUT(request: Request, { params }: { params: { id: string } }) {
+export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const { applianceType, startTime, endTime, dayOfWeek, apartmentId, userId, description } = await request.json();
     const db = await getDb();
 
@@ -32,9 +32,9 @@ export async function PUT(request: Request, { params }: { params: { id: string }
   }
 }
 
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const db = await getDb();
 
     const result = await db.run("DELETE FROM schedules WHERE id = ?", id);
