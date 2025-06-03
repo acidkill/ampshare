@@ -15,7 +15,7 @@ import { useAuth } from '@/hooks/useAuth';
 import type { ScheduledAppliance, ApartmentId, ApplianceType, DayOfWeek } from '@/types';
 import { ALL_APPLIANCES, ALL_DAYS, getApartmentDisplayName } from '@/types';
 import { getApplianceName } from '@/components/icons/ApplianceIcons';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 const scheduleSchema = z.object({
   applianceType: z.custom<ApplianceType>(val => ALL_APPLIANCES.includes(val as ApplianceType), "Invalid appliance type"),
@@ -23,7 +23,12 @@ const scheduleSchema = z.object({
   startTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid time format (HH:MM)"),
   endTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid time format (HH:MM)"),
   description: z.string().optional(),
-}).refine(data => data.startTime < data.endTime, {
+}).refine(data => {
+  if (data.startTime && data.endTime) {
+    return data.startTime < data.endTime;
+  }
+  return true; // Don't validate if one is empty (during initial input)
+}, {
   message: "End time must be after start time",
   path: ["endTime"],
 });
@@ -38,6 +43,25 @@ interface AddScheduleDialogProps {
   isOpen?: boolean;
 }
 
+const getInitialFormValues = (existingSchedule?: ScheduledAppliance): ScheduleFormValues => {
+  if (existingSchedule) {
+    return {
+      applianceType: existingSchedule.applianceType,
+      dayOfWeek: existingSchedule.dayOfWeek,
+      startTime: existingSchedule.startTime,
+      endTime: existingSchedule.endTime,
+      description: existingSchedule.description || '',
+    };
+  }
+  return {
+    applianceType: undefined as unknown as ApplianceType, // For Select placeholder
+    dayOfWeek: undefined as unknown as DayOfWeek, // For Select placeholder
+    startTime: '', // Initialize as empty string
+    endTime: '',   // Initialize as empty string
+    description: '',
+  };
+};
+
 export function AddScheduleDialog({ apartmentId, existingSchedule, triggerButton, onOpenChange, isOpen: controlledIsOpen }: AddScheduleDialogProps) {
   const { addScheduleItem, updateScheduleItem } = useSchedule();
   const { currentUser } = useAuth();
@@ -48,16 +72,14 @@ export function AddScheduleDialog({ apartmentId, existingSchedule, triggerButton
 
   const form = useForm<ScheduleFormValues>({
     resolver: zodResolver(scheduleSchema),
-    defaultValues: existingSchedule ? {
-      applianceType: existingSchedule.applianceType,
-      dayOfWeek: existingSchedule.dayOfWeek,
-      startTime: existingSchedule.startTime,
-      endTime: existingSchedule.endTime,
-      description: existingSchedule.description || '',
-    } : {
-      description: '',
-    },
+    defaultValues: getInitialFormValues(existingSchedule),
   });
+
+  useEffect(() => {
+    // Reset form when existingSchedule changes or dialog opens/closes for an existing schedule
+    form.reset(getInitialFormValues(existingSchedule));
+  }, [existingSchedule, isOpen, form]);
+
 
   if (!currentUser) return null;
 
@@ -78,20 +100,15 @@ export function AddScheduleDialog({ apartmentId, existingSchedule, triggerButton
         ...data,
       });
     }
-    form.reset();
-    setIsOpen(false);
+    setIsOpen(false); 
+    // Form will be reset by useEffect or on next open
   };
   
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
     if (!open) {
-      form.reset(existingSchedule ? {
-        applianceType: existingSchedule.applianceType,
-        dayOfWeek: existingSchedule.dayOfWeek,
-        startTime: existingSchedule.startTime,
-        endTime: existingSchedule.endTime,
-        description: existingSchedule.description || '',
-      } : { description: ''});
+      // Reset form to initial state when dialog is closed
+      form.reset(getInitialFormValues(existingSchedule));
     }
   };
 
@@ -204,3 +221,4 @@ export function AddScheduleDialog({ apartmentId, existingSchedule, triggerButton
     </Dialog>
   );
 }
+
