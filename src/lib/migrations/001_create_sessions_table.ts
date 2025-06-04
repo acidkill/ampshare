@@ -1,7 +1,9 @@
 import { Database } from 'sqlite3';
 
+type SQLiteDatabaseType = Database;
+
 // Helper function to run a query and return a promise
-function runQuery(db: Database, query: string, params: any[] = []): Promise<void> {
+function runQuery(db: SQLiteDatabaseType, query: string, params: any[] = []): Promise<void> {
   return new Promise((resolve, reject) => {
     db.run(query, params, function(err) {
       if (err) {
@@ -14,7 +16,7 @@ function runQuery(db: Database, query: string, params: any[] = []): Promise<void
 }
 
 // Helper function to check if table exists
-function tableExists(db: Database, tableName: string): Promise<boolean> {
+function tableExists(db: SQLiteDatabaseType, tableName: string): Promise<boolean> {
   return new Promise((resolve) => {
     db.get(
       "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
@@ -30,7 +32,7 @@ function tableExists(db: Database, tableName: string): Promise<boolean> {
   });
 }
 
-export const up = async (db: Database): Promise<void> => {
+export const up = async (db: SQLiteDatabaseType): Promise<void> => {
   console.log('Starting migration: Creating sessions table');
   
   try {
@@ -83,7 +85,7 @@ export const up = async (db: Database): Promise<void> => {
   }
 };
 
-export const down = async (db: Database): Promise<void> => {
+export const down = async (db: SQLiteDatabaseType): Promise<void> => {
   console.log('Starting to rollback sessions table');
   
   try {

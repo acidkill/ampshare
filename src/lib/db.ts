@@ -130,9 +130,19 @@ async function runMigrations(db: SQLiteDatabase): Promise<void> {
         console.log(`Running migration: ${migration.name}`);
         
         try {
+          // Get the raw database instance
+          const rawDb = (db as any).driver as sqlite3.Database;
+          
+          // Run the migration with the raw database instance
           await migration.up(rawDb);
-          await db.run('INSERT INTO migrations (name) VALUES (?)', migration.name);
-          console.log(`✅ Successfully completed migration: ${migration.name}`);
+          
+          // Record the migration as completed
+          await db.run(
+            'INSERT INTO migrations (name) VALUES (?)',
+            [migration.name]
+          );
+          
+          console.log(`✅ Migration ${migration.name} completed successfully`);
         } catch (error) {
           console.error(`❌ Migration ${migration.name} failed:`, error);
           await db.exec('ROLLBACK');
