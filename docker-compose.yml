@@ -4,13 +4,18 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "3917:3000" # Map host port 3000 to container port 3000
+      - "3917:3000"
     environment:
-      - DATABASE_PATH=/app/data/ampshare.db
       - NODE_ENV=production
+      - DATABASE_PATH=/app/data/ampshare.db
+      - NEXTAUTH_URL=http://localhost:3000
+      - NEXTAUTH_SECRET=your-secret-key-for-docker
+      - NEXTAUTH_CREDENTIALS_PROVIDER_EMAIL=admin@example.com
+      - NEXTAUTH_CREDENTIALS_PASSWORD=changeme123
+      - DEBUG=true
     volumes:
-      - app_data:/app/data # Mount a named volume for persistent data
+      - app_data:/app/data
     restart: unless-stopped
 
 volumes:
-  app_data: # Define the named volume
+  app_data:
