@@ -24,6 +24,7 @@ function setCookie(headers: Headers, name: string, value: string, options: {
 }
 
 export async function POST(request: Request) {
+  console.log('DATABASE_URL_LOGIN_ROUTE: ' + process.env.DATABASE_URL);
   // Handle preflight request
   if (request.method === 'OPTIONS') {
     return new NextResponse(null, { 
