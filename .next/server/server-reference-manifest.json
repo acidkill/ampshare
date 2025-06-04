@@ -1,0 +1,22 @@
+{
+  "node": {
+    "400867590fc6e50202a47dc57b1ade7f64dd2c722c": {
+      "workers": {
+        "app/page": {
+          "moduleId": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2Fhome%2Fproject%2Fsrc%2Fai%2Fflows%2Fresolve-schedule-conflicts.ts%22%2C%5B%7B%22id%22%3A%22400867590fc6e50202a47dc57b1ade7f64dd2c722c%22%2C%22exportedName%22%3A%22resolveScheduleConflicts%22%7D%5D%5D%5D&__client_imported__=true!",
+          "async": false
+        },
+        "app/(auth)/login/page": {
+          "moduleId": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2Fhome%2Fproject%2Fsrc%2Fai%2Fflows%2Fresolve-schedule-conflicts.ts%22%2C%5B%7B%22id%22%3A%22400867590fc6e50202a47dc57b1ade7f64dd2c722c%22%2C%22exportedName%22%3A%22resolveScheduleConflicts%22%7D%5D%5D%5D&__client_imported__=true!",
+          "async": false
+        }
+      },
+      "layer": {
+        "app/page": "action-browser",
+        "app/(auth)/login/page": "action-browser"
+      }
+    }
+  },
+  "edge": {},
+  "encryptionKey": "HJ8Fc57q5IEBsV+APTXl27WDpvbFRXfoKErKbrrGecE="
+}
