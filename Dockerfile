@@ -41,10 +41,7 @@ RUN mkdir -p /app/data && \
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 
-# Update database permissions after copying
-RUN chown -R nextjs:nodejs /app/.next/standalone /app/.next/static
-
-# Set permissions for the app directory
+# Set permissions for the entire app directory
 RUN chown -R nextjs:nodejs /app
 
 USER nextjs
