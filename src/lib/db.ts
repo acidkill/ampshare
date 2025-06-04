@@ -3,6 +3,7 @@ import { Database, open } from 'sqlite';
 import fs from 'fs';
 import path from 'path';
 import bcrypt from 'bcryptjs';
+import { up as createSessionsTable } from './migrations/001_create_sessions_table';
 
 // Define database types
 type SQLiteDatabase = Database<sqlite3.Database, sqlite3.Statement>;
@@ -115,6 +116,7 @@ async function runMigrations(db: SQLiteDatabase): Promise<void> {
     }
 
     // Define migrations to run
+    
     const migrations: Migration[] = [
       { name: '001_create_sessions_table', up: createSessionsTable }
     ];
