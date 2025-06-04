@@ -1,32 +1,35 @@
-import { Database } from 'sqlite';
-import { Database as SQLite3Database } from 'sqlite3';
+import { Database } from 'sqlite3';
 
-type SQLiteDatabaseType = Database<SQLite3Database, any>;
+type SQLiteDatabaseType = Database;
 
 // Helper function to run a query and return a promise
-async function runQuery(db: SQLiteDatabaseType, query: string, params: any[] = []): Promise<void> {
-  try {
-    await db.run(query, ...params);
-  } catch (err: unknown) {
-    const error = err as Error;
-    console.error('Query error:', { query, params, error: error.message });
-    throw error;
-  }
+function runQuery(db: SQLiteDatabaseType, query: string, params: any[] = []): Promise<void> {
+  return new Promise((resolve, reject) => {
+    db.run(query, params, function(err) {
+      if (err) {
+        console.error('Query error:', { query, params, error: err });
+        return reject(err);
+      }
+      resolve();
+    });
+  });
 }
 
 // Helper function to check if table exists
-async function tableExists(db: SQLiteDatabaseType, tableName: string): Promise<boolean> {
-  try {
-    const result = await db.get<{ name: string } | undefined>(
+function tableExists(db: SQLiteDatabaseType, tableName: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    db.get(
       "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
-      tableName
+      [tableName],
+      (err, row) => {
+        if (err) {
+          console.error('Error checking for table:', tableName, err);
+          return resolve(false);
+        }
+        resolve(!!row);
+      }
     );
-    return !!result;
-  } catch (err: unknown) {
-    const error = err as Error;
-    console.error('Error checking for table:', tableName, error.message);
-    return false;
-  }
+  });
 }
 
 export const up = async (db: SQLiteDatabaseType): Promise<void> => {
@@ -80,23 +83,30 @@ export const down = async (db: SQLiteDatabaseType): Promise<void> => {
     
     console.log('Dropping sessions table...');
     
-    try {
-      await db.exec('DROP TABLE IF EXISTS sessions');
-      console.log('Dropped sessions table');
-      
-      // Also drop the index if it exists
-      await db.exec('DROP INDEX IF EXISTS idx_sessions_userId');
-      console.log('Dropped sessions index');
-      
-      console.log('Successfully rolled back sessions table migration');
-    } catch (error: unknown) {
-      const err = error as Error;
-      console.error('Error during rollback:', err.message);
-      throw error;
-    }
-  } catch (error: unknown) {
-    const err = error as Error;
-    console.error('Rollback failed:', err.message);
+    await new Promise<void>((resolve, reject) => {
+      // Drop the index first if it exists
+      db.run('DROP INDEX IF EXISTS idx_sessions_userId', (err) => {
+        if (err) {
+          console.error('Error dropping index:', err);
+          return reject(err);
+        }
+        console.log('Dropped sessions index');
+        
+        // Then drop the table
+        db.run('DROP TABLE IF EXISTS sessions', (err) => {
+          if (err) {
+            console.error('Error dropping sessions table:', err);
+            return reject(err);
+          }
+          console.log('Dropped sessions table');
+          resolve();
+        });
+      });
+    });
+    
+    console.log('Successfully rolled back sessions table migration');
+  } catch (error) {
+    console.error('Rollback failed:', error);
     throw error;
   }
 };
