@@ -206,6 +206,7 @@ async function seedDatabase(): Promise<void> {
  */
 export async function getDb(): Promise<SQLiteDatabase> {
   if (dbInstance) {
+    console.log('Returning existing database instance');
     return dbInstance;
   }
 
@@ -221,36 +222,68 @@ export async function getDb(): Promise<SQLiteDatabase> {
 
     console.log(`Connecting to database at ${dbPath}...`);
     
+    // Verify sqlite3 module is available
+    if (!sqlite3 || !sqlite3.Database) {
+      throw new Error('SQLite3 module not properly initialized');
+    }
+    
     // Open the database connection
+    console.log('Opening database connection...');
     const newDbInstance = await open({
       filename: dbPath,
       driver: sqlite3.Database,
+    }).catch(err => {
+      console.error('Failed to open database connection:', err);
+      throw new Error(`Failed to open database: ${err.message}`);
     });
+    
+    if (!newDbInstance) {
+      throw new Error('Database connection is null after open()');
+    }
     
     console.log(`✅ Database connection established to ${dbPath}`);
     
     // Configure database settings
-    await newDbInstance.exec('PRAGMA foreign_keys = ON;');
-    await newDbInstance.exec('PRAGMA busy_timeout = 5000;');
-    await newDbInstance.exec('PRAGMA journal_mode = WAL;');
-    
-    // Check database integrity
-    const integrityCheck = await newDbInstance.get('PRAGMA integrity_check;');
-    console.log('Database integrity check:', integrityCheck);
-    
-    // Set up database schema
-    await createTables(newDbInstance);
-    await runMigrations(newDbInstance);
-    
-    // Seed initial data if needed
-    await seedDatabase();
+    console.log('Configuring database settings...');
+    try {
+      await newDbInstance.exec('PRAGMA foreign_keys = ON;');
+      await newDbInstance.exec('PRAGMA busy_timeout = 5000;');
+      await newDbInstance.exec('PRAGMA journal_mode = WAL;');
+      
+      // Check database integrity
+      const integrityCheck = await newDbInstance.get('PRAGMA integrity_check;');
+      console.log('Database integrity check:', integrityCheck);
+      
+      // Set up database schema
+      console.log('Creating tables if needed...');
+      await createTables(newDbInstance);
+      
+      console.log('Running migrations...');
+      await runMigrations(newDbInstance);
+      
+      // Seed initial data if needed
+      console.log('Seeding database if needed...');
+      await seedDatabase();
+      
+    } catch (dbError) {
+      console.error('Database initialization error:', dbError);
+      await newDbInstance.close().catch(closeErr => {
+        console.error('Error closing database after initialization error:', closeErr);
+      });
+      throw dbError;
+    }
     
     // Store the instance for future use
+    console.log('Database initialization complete');
     dbInstance = newDbInstance;
     return dbInstance;
     
   } catch (error) {
-    console.error('❌ Failed to initialize database:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('❌ Failed to initialize database:', errorMessage);
+    if (error instanceof Error) {
+      console.error('Error stack:', error.stack);
+    }
     throw error;
   }
 }
