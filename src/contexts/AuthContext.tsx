@@ -25,22 +25,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const loadUser = async () => {
-      const storedUserId = localStorage.getItem('ampshare_userId');
-      if (storedUserId && storedUserId !== 'undefined' && storedUserId !== 'null') { // Added more robust check
-        try {
+      try {
+        // Skip on server-side
+        if (typeof window === 'undefined') {
+          setLoading(false);
+          return;
+        }
+
+        const storedUserId = localStorage.getItem('ampshare_userId');
+        if (storedUserId && storedUserId !== 'undefined' && storedUserId !== 'null') {
           const response = await fetch(`/api/auth/user/${storedUserId}`);
           if (response.ok) {
             const user = await response.json();
             setCurrentUser(user);
           } else {
+            console.error('Failed to fetch user:', await response.text());
             localStorage.removeItem('ampshare_userId');
           }
-        } catch (error) {
-          console.error('Error loading user:', error);
-          localStorage.removeItem('ampshare_userId');
         }
+      } catch (error) {
+        console.error('Error loading user:', error);
+        localStorage.removeItem('ampshare_userId');
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     loadUser();
