@@ -52,7 +52,10 @@ export default function ApartmentSchedulePage() {
 
   const getUserNameById = (userId: string): string => {
     const user = users.find(u => u.id === userId);
-    return user ? user.name.split(' ')[0] : `User ${userId.substring(0,4)}`; // Show first name or short ID
+    if (user && typeof user.name === 'string' && user.name.trim()) {
+      return user.name.split(' ')[0];
+    }
+    return `User ${userId.substring(0,4)}`;
   };
 
   const apartmentDisplayName = getApartmentDisplayName(apartmentId);
