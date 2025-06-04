@@ -17,6 +17,19 @@ interface Migration {
   up: MigrationFunction;
 }
 
+// Helper function to get a raw SQLite3 database connection
+function getRawDb(dbPath: string): Promise<sqlite3.Database> {
+  return new Promise((resolve, reject) => {
+    const db = new sqlite3.Database(dbPath, (err) => {
+      if (err) {
+        console.error('Error opening raw database:', err);
+        return reject(err);
+      }
+      resolve(db);
+    });
+  });
+}
+
 // Get the database path from environment variables
 const dbPath = process.env.DATABASE_PATH || '/app/data/ampshare.db';
 const dbDir = path.dirname(dbPath);
@@ -57,6 +70,8 @@ const handleDbError = (error: Error) => {
 
 async function runMigrations(db: SQLiteDatabase) {
   try {
+    const rawDb = (db as any).driver as sqlite3.Database;
+    
     // Create migrations table if it doesn't exist
     await db.exec(`
       CREATE TABLE IF NOT EXISTS migrations (
@@ -89,13 +104,18 @@ async function runMigrations(db: SQLiteDatabase) {
     for (const migration of migrations) {
       if (!completedMigrationNames.has(migration.name)) {
         console.log(`Running migration: ${migration.name}`);
-        await migration.up((db as any).driver as sqlite3.Database);
-        await db.run('INSERT INTO migrations (name) VALUES (?)', migration.name);
-        console.log(`Completed migration: ${migration.name}`);
+        try {
+          await migration.up(rawDb);
+          await db.run('INSERT INTO migrations (name) VALUES (?)', migration.name);
+          console.log(`Completed migration: ${migration.name}`);
+        } catch (error) {
+          console.error(`Migration ${migration.name} failed:`, error);
+          throw error;
+        }
       }
     }
   } catch (error) {
-    console.error('Migration failed:', error);
+    console.error('Error running migrations:', error);
     throw error;
   }
 }
@@ -105,10 +125,22 @@ export const getDb = async () => {
     return dbInstance;
   }
 
+  // Create database directory if it doesn't exist
+  if (!fs.existsSync(dbDir)) {
+    fs.mkdirSync(dbDir, { recursive: true });
+    console.log(`Created database directory: ${dbDir}`);
+  }
+
+  // Open the database connection
   dbInstance = await open({
     filename: dbPath,
     driver: sqlite3.Database,
   });
+  
+  console.log(`Database connection established to ${dbPath}`);
+  
+  // Enable foreign key constraints
+  await dbInstance.exec('PRAGMA foreign_keys = ON;');
 
   // Create tables if they don't exist
   await dbInstance.exec(`
