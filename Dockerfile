@@ -14,6 +14,9 @@ RUN npm install --legacy-peer-deps
 # Copy application files
 COPY . .
 
+# Create data directory with root permissions in builder stage
+RUN mkdir -p /app/data
+
 # Build the Next.js application
 RUN npm run build
 
@@ -30,12 +33,16 @@ RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
 # Create data directory with correct permissions
-RUN mkdir -p /app/data && chown nextjs:nodejs /app/data
+RUN mkdir -p /app/data && \
+    chown -R nextjs:nodejs /app/data
 
 # Copy built application from the builder stage
 # Correctly copy standalone output
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+
+# Update database permissions after copying
+RUN chown -R nextjs:nodejs /app/.next/standalone /app/.next/static
 
 # Set permissions for the app directory
 RUN chown -R nextjs:nodejs /app

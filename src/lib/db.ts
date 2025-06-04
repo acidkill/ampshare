@@ -11,31 +11,29 @@ const execAsync = promisify(exec);
 const dbPath = process.env.DATABASE_PATH || '/app/data/ampshare.db';
 const dbDir = path.dirname(dbPath);
 
-// Ensure the directory exists and has correct permissions
+// Ensure the directory exists
 if (!fs.existsSync(dbDir)) {
   try {
     fs.mkdirSync(dbDir, { recursive: true, mode: 0o755 });
-    // Set proper permissions for the directory
-    await execAsync(`chown nextjs:nodejs ${dbDir}`);
-    await execAsync(`chmod 755 ${dbDir}`);
   } catch (error) {
-    console.error('Error setting up database directory:', error);
+    console.error('Error creating database directory:', error);
     throw error;
   }
 }
 
-// Ensure the database file has correct permissions
+// Ensure the database file exists
 if (!fs.existsSync(dbPath)) {
   try {
-    // Create an empty file with proper permissions
+    // Create an empty file
     fs.writeFileSync(dbPath, '');
-    await execAsync(`chown nextjs:nodejs ${dbPath}`);
-    await execAsync(`chmod 644 ${dbPath}`);
   } catch (error) {
-    console.error('Error setting up database file:', error);
+    console.error('Error creating database file:', error);
     throw error;
   }
 }
+
+// Log database path for debugging
+console.log('Database path:', dbPath);
 
 let dbInstance: Awaited<ReturnType<typeof open>> | null = null;
 
