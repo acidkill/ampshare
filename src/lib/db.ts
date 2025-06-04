@@ -1,19 +1,38 @@
 import Database from 'sqlite3';
 import { open } from 'sqlite';
 import path from 'path';
+import fs from 'fs';
+import { promisify } from 'util';
+import { exec } from 'child_process';
+
+const execAsync = promisify(exec);
 
 // Get the database path from environment variables
-// Use a default path if not set, though it's better to always set it
 const dbPath = process.env.DATABASE_PATH || '/app/data/ampshare.db';
-
-// Ensure the directory exists
 const dbDir = path.dirname(dbPath);
-import fs from 'fs';
+
+// Ensure the directory exists and has correct permissions
 if (!fs.existsSync(dbDir)) {
   try {
-    fs.mkdirSync(dbDir, { recursive: true });
+    fs.mkdirSync(dbDir, { recursive: true, mode: 0o755 });
+    // Set proper permissions for the directory
+    await execAsync(`chown nextjs:nodejs ${dbDir}`);
+    await execAsync(`chmod 755 ${dbDir}`);
   } catch (error) {
-    console.error('Error creating database directory:', error);
+    console.error('Error setting up database directory:', error);
+    throw error;
+  }
+}
+
+// Ensure the database file has correct permissions
+if (!fs.existsSync(dbPath)) {
+  try {
+    // Create an empty file with proper permissions
+    fs.writeFileSync(dbPath, '');
+    await execAsync(`chown nextjs:nodejs ${dbPath}`);
+    await execAsync(`chmod 644 ${dbPath}`);
+  } catch (error) {
+    console.error('Error setting up database file:', error);
     throw error;
   }
 }
