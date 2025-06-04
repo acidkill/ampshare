@@ -1,17 +1,38 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import bcrypt from 'bcryptjs';
+import { cookies } from 'next/headers';
+import { v4 as uuidv4 } from 'uuid';
+
+// Helper function to set cookie in the response headers
+function setCookie(headers: Headers, name: string, value: string, options: {
+  httpOnly?: boolean;
+  path?: string;
+  expires?: Date;
+  sameSite?: 'lax' | 'strict' | 'none';
+  secure?: boolean;
+} = {}) {
+  const parts = [`${name}=${encodeURIComponent(value)}`];
+  
+  if (options.path) parts.push(`Path=${options.path}`);
+  if (options.expires) parts.push(`Expires=${options.expires.toUTCString()}`);
+  if (options.httpOnly) parts.push('HttpOnly');
+  if (options.sameSite) parts.push(`SameSite=${options.sameSite}`);
+  if (options.secure) parts.push('Secure');
+  
+  headers.append('Set-Cookie', parts.join('; '));
+}
 
 export async function POST(request: Request) {
-  // Set CORS headers
-  const headers = new Headers();
-  headers.set('Access-Control-Allow-Origin', '*');
-  headers.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  headers.set('Access-Control-Allow-Headers', 'Content-Type');
-
   // Handle preflight request
   if (request.method === 'OPTIONS') {
-    return new NextResponse(null, { headers });
+    return new NextResponse(null, { 
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+      } 
+    });
   }
 
   try {
@@ -44,14 +65,49 @@ export async function POST(request: Request) {
             forcePasswordChange: user.forcePasswordChange === 1, // Convert back to boolean
           },
         };
-        console.log('Login successful, returning:', responseData);
-        return new NextResponse(JSON.stringify(responseData), {
+        console.log('Login successful, creating session');
+        
+        // Create a session token
+        const sessionToken = uuidv4();
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + 7); // 7 days from now
+        
+        // Store session in the database
+        await db.run(
+          'INSERT INTO sessions (id, userId, expiresAt) VALUES (?, ?, ?)',
+          [sessionToken, user.id, expiresAt.toISOString()]
+        );
+        
+        console.log('Session created, returning user data');
+        
+        // Create response with user data
+        const response = new NextResponse(JSON.stringify(responseData), {
           status: 200,
           headers: {
             'Content-Type': 'application/json',
-            ...Object.fromEntries(headers.entries())
+            'Access-Control-Allow-Origin': request.headers.get('origin') || '*',
+            'Access-Control-Allow-Credentials': 'true',
+            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
           }
         });
+        
+        // Set the session cookie in the response headers
+        setCookie(
+          response.headers,
+          'session_token',
+          sessionToken,
+          {
+            httpOnly: true,
+            path: '/',
+            expires: expiresAt,
+            sameSite: 'lax',
+            secure: process.env.NODE_ENV === 'production'
+          }
+        );
+        
+        return response;
       }
     }
 
@@ -62,7 +118,8 @@ export async function POST(request: Request) {
         status: 401,
         headers: {
           'Content-Type': 'application/json',
-          ...Object.fromEntries(headers.entries())
+          'Access-Control-Allow-Origin': request.headers.get('origin') || '*',
+          'Access-Control-Allow-Credentials': 'true'
         }
       }
     );
@@ -78,7 +135,8 @@ export async function POST(request: Request) {
         status: 500,
         headers: {
           'Content-Type': 'application/json',
-          ...Object.fromEntries(headers.entries())
+          'Access-Control-Allow-Origin': request.headers.get('origin') || '*',
+          'Access-Control-Allow-Credentials': 'true'
         }
       }
     );
