@@ -2,7 +2,7 @@ import sqlite3 from 'sqlite3';
 import { Database, open } from 'sqlite';
 import fs from 'fs';
 import path from 'path';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 
 // Define database types
 type SQLiteDatabase = Database<sqlite3.Database, sqlite3.Statement>;
