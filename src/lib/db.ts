@@ -12,8 +12,8 @@ type SQLiteDatabase = Database<sqlite3.Database, sqlite3.Statement>;
 let dbInstance: SQLiteDatabase | null = null;
 
 // Get the database path from environment variable or use default
-const dbDir = process.env.DATABASE_DIR || path.join(process.cwd(), 'data');
-const dbPath = process.env.DATABASE_PATH || path.join(dbDir, 'ampshare.db');
+const dbPath = process.env.DATABASE_PATH || path.join(process.cwd(), 'data', 'ampshare.db'); // Default path if env var is missing
+const dbDir = path.dirname(dbPath); // Crucial: derive dbDir from the actual dbPath
 
 // Migration type
 type Migration = {
@@ -86,7 +86,6 @@ async function createTables(db: SQLiteDatabase): Promise<void> {
  */
 async function runMigrations(db: SQLiteDatabase): Promise<void> {
   console.log('Starting database migrations...');
-  const rawDb = (db as any).driver as sqlite3.Database;
   
   // Wrap in transaction for atomicity
   await db.exec('BEGIN TRANSACTION');
@@ -102,9 +101,7 @@ async function runMigrations(db: SQLiteDatabase): Promise<void> {
     `);
 
     // Get completed migrations
-    const completedMigrations = await db.all<{ name: string }>(
-      'SELECT name FROM migrations ORDER BY name'
-    );
+    const completedMigrations = await db.all<{ name: string }>('SELECT name FROM migrations ORDER BY name');
     
     const completedMigrationNames = new Set<string>();
     if (Array.isArray(completedMigrations)) {
@@ -116,7 +113,6 @@ async function runMigrations(db: SQLiteDatabase): Promise<void> {
     }
 
     // Define migrations to run
-    
     const migrations: Migration[] = [
       { name: '001_create_sessions_table', up: createSessionsTable }
     ];
@@ -130,17 +126,11 @@ async function runMigrations(db: SQLiteDatabase): Promise<void> {
         console.log(`Running migration: ${migration.name}`);
         
         try {
-          // Get the raw database instance
-          const rawDb = (db as any).driver as sqlite3.Database;
-          
-          // Run the migration with the raw database instance
-          await migration.up(rawDb);
+          // Run the migration with the database instance
+          await migration.up(db as unknown as sqlite3.Database);
           
           // Record the migration as completed
-          await db.run(
-            'INSERT INTO migrations (name) VALUES (?)',
-            [migration.name]
-          );
+          await db.run('INSERT INTO migrations (name) VALUES (?)', [migration.name]);
           
           console.log(`✅ Migration ${migration.name} completed successfully`);
         } catch (error) {
@@ -184,12 +174,7 @@ async function seedDatabase(): Promise<void> {
       
       await db.run(
         'INSERT INTO users (id, username, password, name, role, forcePasswordChange) VALUES (?, ?, ?, ?, ?, ?)',
-        '1',
-        'admin',
-        hashedPassword,
-        'Admin User',
-        'admin',
-        1
+        '1', 'admin', hashedPassword, 'Admin User', 'admin', 1
       );
       
       console.log('✅ Admin user created with username: admin');
@@ -214,6 +199,7 @@ export async function getDb(): Promise<SQLiteDatabase> {
   
   try {
     // Ensure database directory exists
+    // This check is now more reliable due to corrected dbDir
     if (!fs.existsSync(dbDir)) {
       console.log(`Creating database directory: ${dbDir}`);
       fs.mkdirSync(dbDir, { recursive: true, mode: 0o755 });
