@@ -5,6 +5,7 @@ import fs from 'fs';
 import { promisify } from 'util';
 import { exec } from 'child_process';
 import { up as createSessionsTable } from './migrations/001_create_sessions_table';
+import { seedDatabase } from './seed';
 
 const execAsync = promisify(exec);
 
@@ -148,9 +149,12 @@ export const getDb = async () => {
       id TEXT PRIMARY KEY,
       username TEXT UNIQUE NOT NULL,
       password TEXT NOT NULL,
+      name TEXT NOT NULL,
+      role TEXT NOT NULL DEFAULT 'user',
       apartmentId TEXT,
-      name TEXT,
-      forcePasswordChange BOOLEAN DEFAULT 0
+      forcePasswordChange INTEGER DEFAULT 1,
+      createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+      updatedAt TEXT DEFAULT CURRENT_TIMESTAMP
     );
 
     CREATE TABLE IF NOT EXISTS schedules (
