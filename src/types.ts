@@ -45,3 +45,14 @@ export interface ScheduleEntry {
   // Potentially other details like duration, notes, etc.
 }
 
+export interface Conflict {
+  id: string;
+  type: 'appliance_overlap' | 'power_overload' | 'other'; // Type of conflict
+  description: string; // Detailed description of the conflict
+  scheduleEntryIds: string[]; // IDs of ScheduleEntry items involved in the conflict
+  suggestedResolution?: string; // AI or rule-based suggestion
+  status: 'unresolved' | 'resolved' | 'ignored';
+  createdAt: string; // ISO date string
+  resolvedAt?: string; // ISO date string, optional
+  resolutionNotes?: string; // Notes on how the conflict was resolved or why it was ignored
+}

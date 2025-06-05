@@ -16,6 +16,8 @@
     "next": "latest",
     "react": "latest",
     "react-dom": "latest",
+    "sqlite": "^5.1.1",
+    "sqlite3": "^5.1.7",
     "uuid": "^11.1.0"
   },
   "devDependencies": {
