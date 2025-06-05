@@ -162,6 +162,11 @@ async function runMigrations(db: SQLiteDatabase): Promise<void> {
  * @param db The database instance to use
  */
 async function seedDatabase(db: SQLiteDatabase): Promise<void> {
+  // Don't seed if we already have a database instance
+  if (dbInstance) {
+    return;
+  }
+
   try {
     // Check if we already have users
     const userCount = await db.get<{ count: number }>('SELECT COUNT(*) as count FROM users');
