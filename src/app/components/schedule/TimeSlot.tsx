@@ -1,22 +1,18 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
+import type { Appliance } from '@/types';
 
 interface TimeSlotProps {
   day: string;
   time: string;
-  // isInitiallySelected?: boolean; // If selection state needs to be controlled from parent later
-  // onSlotSelect?: (day: string, time: string, isSelected: boolean) => void; // Callback for parent
+  scheduledApplianceDetails: Appliance | null; // Details of the appliance scheduled in this slot, or null
+  onClick: () => void; // Callback when the slot is clicked
 }
 
-const TimeSlot: React.FC<TimeSlotProps> = ({ day, time }) => {
-  const [isSelected, setIsSelected] = useState(false);
-
-  const handleClick = () => {
-    setIsSelected(!isSelected);
-    // onSlotSelect?.(day, time, !isSelected);
-  };
+const TimeSlot: React.FC<TimeSlotProps> = ({ day, time, scheduledApplianceDetails, onClick }) => {
+  const isScheduled = !!scheduledApplianceDetails;
 
   const baseStyle = {
     border: '1px solid #D1D5DB',
@@ -26,33 +22,32 @@ const TimeSlot: React.FC<TimeSlotProps> = ({ day, time }) => {
     textAlign: 'center' as 'center',
     cursor: 'pointer',
     backgroundColor: '#FFFFFF', // Default background
-    transition: 'background-color 0.2s ease-in-out', // Subtle transition
+    color: '#2C3E50', // Default text color
+    transition: 'background-color 0.2s ease-in-out',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
   };
 
-  const selectedStyle = {
+  const scheduledStyle = {
     ...baseStyle,
-    backgroundColor: '#F2A63A', // Warm orange accent for selection
-    color: '#FFFFFF', // White text for contrast on orange
-  };
-
-  const hoverStyle = {
-    // On hover, slightly darker or different shade to indicate interactivity
-    // This would ideally be done with CSS :hover, but for JS-driven styles:
-    // For simplicity, we are not adding JS-based hover styles here.
-    // CSS modules or Tailwind would be better for this.
+    backgroundColor: '#5D9CEC', // Muted blue for scheduled items (as per primary color)
+    // Consider a different color if an *active selection for scheduling* is needed vs *already scheduled*
+    // For now, let's use a muted blue for any scheduled item. Conflict color is orange.
+    color: '#FFFFFF', // White text for contrast on blue
   };
 
   return (
     <div 
-      style={isSelected ? selectedStyle : baseStyle}
-      onClick={handleClick}
+      style={isScheduled ? scheduledStyle : baseStyle}
+      onClick={onClick} // Use the passed onClick handler
       role="button"
       tabIndex={0}
-      aria-pressed={isSelected}
-      aria-label={`Schedule slot for ${day} at ${time}`}
+      aria-pressed={isScheduled}
+      aria-label={`Schedule slot for ${day} at ${time}${isScheduled ? `, scheduled: ${scheduledApplianceDetails.name}` : ', empty'}`}
+      title={isScheduled ? scheduledApplianceDetails.name : `Click to schedule for ${time}`}
     >
-      {/* Content for `${day} ${time}` can be added here, e.g., appliance icon */}
-      {isSelected ? 'Selected' : ''}
+      {isScheduled ? scheduledApplianceDetails.icon : ''}
     </div>
   );
 };

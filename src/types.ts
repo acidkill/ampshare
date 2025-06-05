@@ -27,3 +27,21 @@ export interface SeedUser {
   forcePasswordChange?: boolean; // Optional as it might not be present for all seed users initially
   // Add other seed user properties as needed
 }
+
+// Define Appliance type based on ApplianceSelector component
+export interface Appliance {
+  id: string;      // e.g., 'car_charger', 'oven'
+  name: string;    // e.g., 'Car Charger', 'Oven'
+  icon: string;    // e.g., '🔌', '🍳'
+}
+
+// Define ScheduleEntry type for storing scheduled items
+export interface ScheduleEntry {
+  day: string;        // e.g., 'Mon', 'Tue'
+  time: string;       // e.g., '09:00', '14:00'
+  applianceId: string;
+  userId: string;     // Who scheduled it
+  apartmentId: string;
+  // Potentially other details like duration, notes, etc.
+}
+
