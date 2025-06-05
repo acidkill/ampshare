@@ -18,6 +18,10 @@ export const hardcodedUsers: SeedUser[] = [
 
 export const findUserByUsername = async (username: string): Promise<User | undefined> => {
   const db = await getDb();
+  if (!db) {
+    console.error("Database connection not available in findUserByUsername");
+    return undefined;
+  }
   const user = await db.get<User>('SELECT * FROM users WHERE username = ?', username);
   // SQLite boolean is 0 or 1, convert to boolean
   if (user) {
@@ -28,6 +32,10 @@ export const findUserByUsername = async (username: string): Promise<User | undef
 
 export const getUserById = async (userId: string): Promise<User | undefined> => {
   const db = await getDb();
+  if (!db) {
+    console.error("Database connection not available in getUserById");
+    return undefined;
+  }
   const user = await db.get<User>('SELECT * FROM users WHERE id = ?', userId);
    // SQLite boolean is 0 or 1, convert to boolean
   if (user) {
@@ -38,6 +46,10 @@ export const getUserById = async (userId: string): Promise<User | undefined> => 
 
 export const updateUserPassword = async (userId: string, newPassword: string): Promise<User | undefined> => {
   const db = await getDb();
+  if (!db) {
+    console.error("Database connection not available in updateUserPassword");
+    return undefined;
+  }
   const hashedPassword = await hash(newPassword, 10);
 
   const result = await db.run('UPDATE users SET password = ?, forcePasswordChange = 0 WHERE id = ?', hashedPassword, userId);
