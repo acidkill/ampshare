@@ -19,6 +19,7 @@ import {
 import { Flame, LayoutDashboard, CalendarDays, Users, Zap, Power, Settings } from 'lucide-react'; 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { setupLazyComponents } from '@/web-components/lazy-registry';
 
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -30,6 +31,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     if (!loading && !currentUser && pathname !== '/login' && !pathname.startsWith('/settings')) {
       router.replace('/login');
     }
+    setupLazyComponents();
   }, [currentUser, loading, router, pathname]);
 
   if (loading) {
