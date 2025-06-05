@@ -153,4 +153,76 @@ By following these guidelines, we aim to build a reliable testing culture that s
 
 ## 5. Test Coverage Gaps & Plan
 
-*(This section will be populated by Task 1.5)*
+This section outlines the current known test coverage gaps and a plan to address them. This plan aligns with the features described in `docs/blueprint.md` and the tasks in the project management system (Task Master AI).
+
+### 5.1. Identified Coverage Gaps (as of 2025-06-05)
+
+Based on the current test baseline and the project's feature set, the following areas have significant coverage gaps:
+
+1.  **Database Layer (`src/lib/db.ts`)**:
+    *   **Gap**: No direct unit or integration tests for the SQLite CRUD operations for `Apartment`, `User`, `Appliance`, `ScheduleEntry`, and `Conflict` entities.
+    *   **Impact**: Potential errors in SQL queries, data mapping, or transaction handling might go unnoticed.
+
+2.  **Core UI Components (`src/app/components/schedule/`)**:
+    *   **Gap**: Most interactive UI components lack tests. This includes:
+        *   `ApartmentFilter.tsx`
+        *   `ApplianceSelector.tsx`
+        *   `CombinedScheduleView.tsx`
+        *   `ScheduleGrid.tsx`
+    *   **Impact**: Regressions in UI rendering, user interactions, or state management within these components may not be caught automatically.
+    *   *Note*: `TimeSlot.tsx` has a basic test file, which will be expanded.
+
+3.  **Page Level Components (`src/app/schedule/` and `src/app/schedule/combined/`)**:
+    *   **Gap**: Page components that orchestrate various UI components and data fetching/display are untested.
+    *   **Impact**: Issues with page structure, data flow to components, or overall page behavior might be missed.
+
+4.  **Middleware (`src/middleware.ts`)**:
+    *   **Gap**: The Next.js middleware for handling authentication and route protection is untested.
+    *   **Impact**: Security vulnerabilities or incorrect routing behavior related to authentication status might not be detected.
+
+5.  **Core Application Logic (To be developed in upcoming tasks)**:
+    *   **Scheduling Logic**: Algorithms for booking, checking availability, etc.
+    *   **Conflict Detection & Resolution Logic**: Core algorithms for identifying and suggesting resolutions for schedule conflicts.
+    *   **Real-time Alert System**: Logic for generating and handling alerts.
+    *   **User Management UI & Logic (Admin)**: Frontend and backend logic for administrator user management tasks.
+    *   **Impact**: As these features are developed (Tasks 2-7, 9), concurrent test development is crucial.
+
+### 5.2. Test Plan - Prioritized Actions
+
+This plan outlines the general approach to improving test coverage. Specific test cases will be detailed as each feature/module is developed or refactored.
+
+1.  **Database Layer (`src/lib/db.ts`) Tests (High Priority - Task 9)**:
+    *   **Action**: Create `src/lib/db.test.ts`.
+    *   **Type**: Integration tests using an in-memory SQLite instance.
+    *   **Scope**: Test each CRUD function for all entities (`Apartment`, `User`, `Appliance`, `ScheduleEntry`, `Conflict`). Verify data insertion, retrieval, updates, deletions, foreign key constraints, and error handling.
+    *   **Goal**: Ensure the database interaction layer is reliable.
+
+2.  **Critical UI Components (High Priority - Concurrent with Tasks 3, 4, 7)**:
+    *   **Action**: Create `.test.tsx` files for key scheduling and user management UI components as they are built or enhanced.
+    *   **Type**: Component tests using React Testing Library.
+    *   **Scope**: Test rendering based on props/state, user interactions (clicks, form submissions), and calls to backend services (mocked).
+    *   **Initial Focus**: `ScheduleGrid.tsx`, `CombinedScheduleView.tsx`, core forms for user and schedule management.
+
+3.  **Middleware (`src/middleware.ts`) Tests (Medium Priority - Task 2)**:
+    *   **Action**: Create `src/middleware.test.ts`.
+    *   **Type**: Unit/Integration tests using mock request/response objects.
+    *   **Scope**: Test authentication checks, redirection logic for protected routes, and handling of JWTs.
+
+4.  **Page Level Integration Tests (Medium Priority - Concurrent with UI development)**:
+    *   **Action**: Create tests for main page components in `src/app/`.
+    *   **Type**: Integration tests with React Testing Library.
+    *   **Scope**: Test page rendering with child components, basic data flow, and key user interactions on the page.
+
+5.  **Business Logic for Core Features (High Priority - Concurrent with Tasks 3, 4, 5, 6, 7)**:
+    *   **Action**: Create dedicated test files for new modules implementing scheduling logic, conflict detection, alert systems, etc.
+    *   **Type**: Primarily unit tests, with integration tests for complex interactions.
+    *   **Scope**: Test algorithms, edge cases, and integration points with the database or other services.
+
+### 5.3. Ongoing Process
+
+*   **New Features**: All new features (as per Task Master AI tasks) must include corresponding unit and integration tests.
+*   **Bug Fixes**: When a bug is fixed, a regression test should be added to prevent it from recurring.
+*   **Coverage Review**: Regularly review `npm run test` coverage reports to identify new gaps.
+*   **Thresholds**: Gradually increase global coverage thresholds in `jest.config.js` as coverage improves.
+
+This plan will be revisited and updated as the project progresses and new features are implemented or existing ones are refactored.
