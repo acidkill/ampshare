@@ -7,6 +7,7 @@ import { UnplannedRequestProvider } from '@/contexts/UnplannedRequestContext';
 import { ThemeProvider } from "next-themes";
 import { Suspense } from 'react';
 import { Inter } from 'next/font/google';
+import { WebComponentsLoader } from '@/components/WebComponentsLoader';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -42,6 +43,7 @@ export default function RootLayout({
             <AuthProvider>
               <ScheduleProvider>
                 <UnplannedRequestProvider>
+                  <WebComponentsLoader />
                   {children}
                   <Toaster />
                 </UnplannedRequestProvider>

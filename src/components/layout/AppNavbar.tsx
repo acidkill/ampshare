@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Bell, Flame, LogOut, Settings, UserCircle, Menu } from 'lucide-react';
+import { Bell, Flame, LogOut, Settings, UserCircle, Menu, LayoutTemplate } from 'lucide-react';
 import Link from 'next/link';
 import { SidebarTrigger, useSidebar } from '@/components/ui/sidebar';
 import { ThemeToggle } from './ThemeToggle'; 
@@ -47,6 +47,16 @@ export function AppNavbar() {
           <span className="font-headline text-xl hidden md:inline">AmpShare</span>
         </Link>
       </div>
+      
+      <div className="hidden md:flex items-center gap-4">
+          <Link 
+            href="/demo" 
+            className="text-sm font-medium hover:text-primary transition-colors flex items-center gap-2"
+          >
+            <LayoutTemplate className="h-4 w-4" />
+            <span>Demos</span>
+          </Link>
+        </div>
       
       <div className="ml-auto flex items-center gap-2 md:gap-4">
         <ThemeToggle /> 

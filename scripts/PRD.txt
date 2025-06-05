@@ -1,0 +1,143 @@
+Product Requirements Document: Web Component Initialization and Build Optimization
+1. Overview
+This PRD outlines the requirements for fixing the web component initialization error and optimizing the Docker build process for the Ampshare application. The primary issues to address are:
+
+Duplicate web component registration causing console errors
+Slow Docker builds
+Inefficient code organization affecting build times
+2. Problem Statement
+2.1 Web Component Initialization Error
+Error: Uncaught Error: A custom element with name 'mce-autosize-textarea' has already been defined
+Impact: Causes JavaScript errors in the console and may affect component behavior
+Root Cause: Multiple instances of the same web component being registered
+2.2 Build and Performance Issues
+Slow Docker build times
+Inefficient caching in the build process
+Unoptimized dependencies and assets
+3. Requirements
+3.1 Web Component Fixes (High Priority)
+3.1.1 Web Component Registration
+[ ] Implement a singleton pattern for web component registration
+[ ] Add check to prevent duplicate component registration
+[ ] Ensure proper cleanup of web components during hot module replacement
+3.1.2 Error Handling
+[ ] Add error boundaries around web component initialization
+[ ] Implement graceful degradation for web component failures
+[ ] Add error logging for web component registration issues
+3.2 Build Optimization (High Priority)
+3.2.1 Docker Build Optimization
+[ ] Implement multi-stage builds
+[ ] Optimize layer caching for dependencies
+[ ] Reduce final image size by:
+Using Alpine-based images
+Removing development dependencies in production
+Cleaning package cache after installation
+3.2.2 Next.js Optimization
+[ ] Configure Next.js for production optimization
+[ ] Implement proper code splitting
+[ ] Optimize static asset handling
+[ ] Configure proper caching headers
+3.3 Code Organization (Medium Priority)
+3.3.1 Component Structure
+[ ] Centralize web component registration
+[ ] Implement lazy loading for non-critical components
+[ ] Organize components by feature
+3.3.2 Dependency Management
+[ ] Audit and update dependencies
+[ ] Remove unused dependencies
+[ ] Consolidate duplicate dependencies
+4. Technical Specifications
+4.1 Web Component Fix
+typescript
+CopyInsert
+// web-components/registry.ts
+const registeredComponents = new Set<string>();
+
+export function registerWebComponent(name: string, constructor: CustomElementConstructor) {
+  if (!customElements.get(name) && !registeredComponents.has(name)) {
+    customElements.define(name, constructor);
+    registeredComponents.add(name);
+  }
+}
+4.2 Dockerfile Optimization
+dockerfile
+CopyInsert
+# Stage 1: Build
+FROM node:20-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
+
+# Stage 2: Production
+FROM node:20-alpine
+WORKDIR /app
+ENV NODE_ENV=production
+COPY --from=builder /app/package*.json ./
+RUN npm ci --only=production
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/public ./public
+EXPOSE 3000
+CMD ["npm", "start"]
+5. Non-Functional Requirements
+5.1 Performance
+Build time should be reduced by at least 40%
+Final Docker image size should be under 200MB
+Web component initialization should not throw duplicate registration errors
+5.2 Reliability
+All existing functionality must be preserved
+No regressions in performance or behavior
+Proper error handling for all web component operations
+5.3 Maintainability
+Clear documentation for web component usage
+Comments explaining optimization choices
+Updated README with build and deployment instructions
+6. Testing Requirements
+6.1 Unit Tests
+[ ] Test web component registration
+[ ] Verify no duplicate registrations
+[ ] Test error handling
+6.2 Integration Tests
+[ ] Verify component functionality in different scenarios
+[ ] Test with multiple instances of the same component
+6.3 Performance Tests
+[ ] Measure build time before and after optimizations
+[ ] Verify image size reduction
+[ ] Test application startup time
+7. Deployment
+7.1 CI/CD Updates
+[ ] Update CI/CD pipeline with new build process
+[ ] Add build cache for dependencies
+[ ] Implement proper versioning
+7.2 Rollback Plan
+[ ] Create rollback procedure
+[ ] Document rollback steps
+[ ] Test rollback process
+8. Success Metrics
+Build Time: At least 40% reduction in build time
+Image Size: Final image size under 200MB
+Errors: No duplicate web component registration errors
+Performance: No degradation in application performance
+9. Dependencies
+Node.js v20+
+Docker
+Next.js 15.3.3
+Web Components v1
+10. Risks and Mitigations
+| Risk | Impact | Likelihood | Mitigation | |------|--------|------------|------------| | Breaking changes in web components | High | Medium | Thorough testing and code review | | Build optimization side effects | High | Low | Implement in stages with testing | | Dependency conflicts | Medium | Medium | Pin dependency versions and test updates |
+
+11. Timeline
+Phase 1: Web Component Fixes - 2 days
+Phase 2: Build Optimization - 3 days
+Phase 3: Testing and Validation - 2 days
+Phase 4: Deployment - 1 day
+Total Estimated Time: 8 business days
+
+12. Approvals
+[ ] Product Owner
+[ ] Tech Lead
+[ ] QA Lead
+Document Version: 1.0
+Last Updated: 2025-06-05
+Author: Cascade
