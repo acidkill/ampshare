@@ -83,4 +83,34 @@ describe('Auth Library', () => {
   });
 
   // More tests for getUserById and updateUserPassword will go here
+
+  describe('getUserById', () => {
+    it('should return a user if ID exists and forcePasswordChange is 0', async () => {
+      mockDbInstance.get.mockResolvedValue({ ...mockUserNoForceChange, forcePasswordChange: 0 });
+      const user = await getUserById('user1');
+      expect(mockDbInstance.get).toHaveBeenCalledWith('SELECT * FROM users WHERE id = ?', 'user1');
+      expect(user).toEqual(mockUserNoForceChange);
+      expect(user?.forcePasswordChange).toBe(false);
+    });
+
+    it('should return a user if ID exists and forcePasswordChange is 1', async () => {
+      mockDbInstance.get.mockResolvedValue({ ...mockUserWithForceChange, forcePasswordChange: 1 });
+      const user = await getUserById('user2');
+      expect(mockDbInstance.get).toHaveBeenCalledWith('SELECT * FROM users WHERE id = ?', 'user2');
+      expect(user).toEqual(mockUserWithForceChange);
+      expect(user?.forcePasswordChange).toBe(true);
+    });
+
+    it('should return undefined if ID does not exist', async () => {
+      mockDbInstance.get.mockResolvedValue(undefined);
+      const user = await getUserById('nonexistentid');
+      expect(user).toBeUndefined();
+    });
+
+    it('should return undefined if getDb returns null (db connection fails)', async () => {
+      mockedGetDb.mockReturnValue(Promise.resolve(null));
+      const user = await getUserById('anyid');
+      expect(user).toBeUndefined();
+    });
+  });
 });
