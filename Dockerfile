@@ -5,11 +5,14 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy package.json and package-lock.json (or yarn.lock, pnpm-lock.yaml)
-COPY package.json package-lock.json* ./
+# Copy only package.json to ensure fresh resolution based on it
+COPY package.json ./
 
-# Install dependencies using npm ci for cleaner and more reliable builds
-RUN npm ci
+# Remove any existing lock file and node_modules to ensure clean install from package.json
+RUN rm -f package-lock.json* && rm -rf node_modules
+
+# Install dependencies based purely on package.json
+RUN npm install --legacy-peer-deps
 
 # Copy the rest of the application source code
 # The .dockerignore file will prevent unnecessary files from being copied
