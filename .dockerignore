@@ -38,3 +38,25 @@ README.md
 apphosting.yaml
 components.json
 # Add any other files/directories not needed in the Docker image
+
+# CI files
+.github
+
+# Build outputs (already handled by multi-stage build copy)
+build
+dist
+
+# Development/testing related files and directories
+.env*
+*.local
+.vercel
+.turbo
+.cache
+.idea
+
+# Other common ignore patterns
+*.swp
+*.bak
+*.swo
+*.tgz
+*.tar.gz
