@@ -1,56 +1,32 @@
-# Stage 1: Build the application
-FROM docker.io/library/node:20-alpine AS builder
+# Stage 1: Build
+FROM node:20-alpine AS builder
 WORKDIR /app
 
-# Ensure the latest package files are copied
-COPY package.json package-lock.json ./
+# Copy package files and install dependencies
+COPY package*.json ./
+RUN npm ci
 
-# Clear npm cache (optional, but good practice)
-RUN npm cache clean --force
-
-# Install dependencies with legacy peer deps to handle subpath exports
-RUN npm install --legacy-peer-deps
-
-# Copy application files
+# Copy source code and build
 COPY . .
-
-# Create data directory with root permissions in builder stage
-RUN mkdir -p /app/data
-
-# Build the Next.js application
 RUN npm run build
 
-# Stage 2: Production image
-FROM node:20-alpine AS runner
+# Stage 2: Production
+FROM node:20-alpine
 WORKDIR /app
+ENV NODE_ENV=production
 
-ENV NODE_ENV production
-# You can set the PORT environment variable here if you want to change the default port (3000)
-# ENV PORT 3000
+# Copy only production dependencies
+COPY --from=builder /app/package*.json ./
+RUN npm ci --only=production && \
+    npm cache clean --force
 
-# Create a non-root user and group
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+# Copy build output and public files
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/next.config.js ./next.config.js
 
-# Create data directory with correct permissions
-RUN mkdir -p /app/data && \
-    chown -R nextjs:nodejs /app/data
-
-# Copy built application from the builder stage
-# Correctly copy standalone output
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
-
-# Set permissions for the entire app directory
-RUN chown -R nextjs:nodejs /app
-
-USER nextjs
-
-# Ensure data directory exists with correct permissions
-RUN mkdir -p /app/data
+# Set user to non-root for security
+USER node
 
 EXPOSE 3000
-
-# Command to run the application
-# The standalone output includes a server.js file
-CMD ["node", "server.js"]
+CMD ["npm", "start"]
