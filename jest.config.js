@@ -26,6 +26,14 @@ const customJestConfig = {
     '!src/lib/db.ts',          // Exclude mock DB
     '!src/app/layout.tsx',     // Exclude basic layout file if not much logic
   ],
+  coverageThreshold: {
+    global: {
+      branches: 30,
+      functions: 30,
+      lines: 30,
+      statements: 30,
+    },
+  },
 }
 
 // createJestConfig is exported this way to ensure that next/jest can load the Next.js config which is async
