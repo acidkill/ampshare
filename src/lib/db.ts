@@ -175,6 +175,15 @@ import bcrypt from 'bcryptjs';
 
 const SALT_ROUNDS = 10;
 
+// Helper to get count of tenant users in an apartment
+export async function getTenantUsersCountByApartmentId(apartmentId: string): Promise<number> {
+  const result = await getOne<{ count: number }>(
+    "SELECT COUNT(*) as count FROM Users WHERE apartmentId = ? AND role = 'tenant'", 
+    [apartmentId]
+  );
+  return result?.count || 0;
+}
+
 // Helper to convert DB user (with passwordHash) to User (without passwordHash)
 function mapDbUserToUser(dbUser: any): User {
   const { passwordHash, ...user } = dbUser;
@@ -189,6 +198,14 @@ export async function createUser(userData: Omit<User, 'id'> & { password?: strin
   const existingApartment = await getApartmentById(userData.apartmentId);
   if (!existingApartment) {
     throw new Error(`Apartment with id ${userData.apartmentId} not found.`);
+  }
+
+  // Check tenant limit for the apartment if the new user is a tenant
+  if (userData.role === 'tenant') {
+    const tenantCount = await getTenantUsersCountByApartmentId(userData.apartmentId);
+    if (tenantCount >= 2) {
+      throw new Error(`Apartment ${userData.apartmentId} already has the maximum number of tenants (2).`);
+    }
   }
 
   const passwordHash = await bcrypt.hash(userData.password, SALT_ROUNDS);
@@ -250,6 +267,26 @@ export async function updateUser(id: string, updates: Partial<Omit<User, 'id' | 
   const existingUser = await getOne<any>('SELECT * FROM Users WHERE id = ?', [id]);
   if (!existingUser) {
     return undefined; // User not found
+  }
+
+  // Check tenant limit if changing apartment or role to tenant
+  if (updates.apartmentId && updates.apartmentId !== existingUser.apartmentId) {
+    // User is changing apartments. Check new apartment capacity if user is/will be a tenant.
+    const futureRole = updates.role || existingUser.role;
+    if (futureRole === 'tenant') {
+      const tenantCountInNewApartment = await getTenantUsersCountByApartmentId(updates.apartmentId);
+      if (tenantCountInNewApartment >= 2) {
+        throw new Error(`Target apartment ${updates.apartmentId} already has the maximum number of tenants (2).`);
+      }
+    }
+  } else if (updates.role === 'tenant' && existingUser.role !== 'tenant') {
+    // User is changing role to tenant in the current (or explicitly same) apartment.
+    // updates.apartmentId is either undefined or same as existingUser.apartmentId
+    const currentApartmentIdToCheck = updates.apartmentId || existingUser.apartmentId;
+    const tenantCountInCurrentApartment = await getTenantUsersCountByApartmentId(currentApartmentIdToCheck);
+    if (tenantCountInCurrentApartment >= 2) {
+      throw new Error(`Apartment ${currentApartmentIdToCheck} already has the maximum number of tenants (2) and cannot accommodate another tenant by role change.`);
+    }
   }
 
   const fieldsToUpdate: string[] = [];
