@@ -75,34 +75,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [currentUser, loading, router, pathname]);
 
   const login = async (username: string, password_DO_NOT_USE_IN_PROD: string): Promise<boolean> => {
-    console.log('Login attempt with username:', username);
     setLoading(true);
     try {
-      console.log('Sending login request to /api/auth/login');
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ username, password: password_DO_NOT_USE_IN_PROD }),
-        credentials: 'include', // Important for cookies to be included
+        credentials: 'include',
       });
 
-      console.log('Login response status:', response.status);
-      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
-      
+      console.log('Login response headers:', response.headers);
+
       if (response.ok) {
         const data = await response.json();
-        console.log('Login response data:', data);
-        
         if (data.success && data.user) {
-          console.log('Login successful, setting user data');
           setCurrentUser(data.user);
           localStorage.setItem('ampshare_userId', data.user.id);
+          
+          // Add explicit redirect
+          if (data.user.forcePasswordChange) {
+            router.push('/settings?firstLogin=true');
+          } else {
+            router.push('/dashboard');
+          }
+          
           setLoading(false);
           return true;
-        } else {
-          console.log('Login failed - success flag is false or user data missing');
         }
       }
     } catch (error) {

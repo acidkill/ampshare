@@ -121,29 +121,21 @@ export async function POST(request: Request) {
           headers.set('Pragma', 'no-cache');
           headers.set('Expires', '0');
           
-          // Set the session cookie in the response headers
-          const cookieOptions = {
-            httpOnly: true,
-            path: '/',
-            expires: expiresAt,
-            sameSite: 'lax' as const,
-            secure: process.env.NODE_ENV === 'production',
-            domain: 'beltalowda.ddns.net' // Removed leading dot for better compatibility
-          };
-          
-          console.log('Setting cookie with options:', JSON.stringify(cookieOptions, null, 2));
-          
-          setCookie(
-            headers,
-            'session_token',
-            sessionToken,
-            cookieOptions
-          );
-          
           // Create the response with the headers
           const response = new NextResponse(JSON.stringify(responseData), {
             status: 200,
-            headers
+            headers,
+          });
+          
+          // Set the session cookie directly on the response
+          response.cookies.set({
+            name: 'session_token',
+            value: sessionToken,
+            httpOnly: true,
+            secure: true,
+            sameSite: 'none',
+            path: '/',
+            maxAge: 60 * 60 * 24 * 7 // One week
           });
           
           // Log the response headers for debugging

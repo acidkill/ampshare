@@ -129,7 +129,7 @@ export default function ConflictResolutionPage() {
            {!loadingConflicts && !conflictResolutionResult && (
             <div className="text-center py-10">
                 <PackageOpen className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                <p className="text-muted-foreground">Click "Detect Scheduling Conflicts" to analyze your current schedule.</p>
+                <p className="text-muted-foreground">Click &quot;Detect Scheduling Conflicts&quot; to analyze your current schedule.</p>
             </div>
            )}
         </CardContent>

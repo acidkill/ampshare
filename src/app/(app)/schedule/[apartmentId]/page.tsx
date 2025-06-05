@@ -169,7 +169,7 @@ export default function ApartmentSchedulePage() {
           ))}
           {apartmentSchedule.length === 0 && (
             <p className="text-center text-muted-foreground py-8">
-              No schedules added yet for this household. Click "Add Schedule" to get started.
+              No schedules added yet for this household. Click &quot;Add Schedule&quot; to get started.
             </p>
           )}
           {editingSchedule && (

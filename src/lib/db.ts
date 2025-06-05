@@ -300,4 +300,5 @@ process.on('SIGTERM', async () => {
   process.exit(0);
 });
 
-export default { getDb, closeDb };
+const dbUtils = { getDb, closeDb };
+export default dbUtils;
