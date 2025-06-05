@@ -1,5 +1,5 @@
 
-import { findUserByUsername, getUserById, updateUserPassword, getUsersByApartmentId, login } from './auth';
+import { findUserByUsername, getUserById, updateUserPassword, getUsersByApartmentId, login, verifyToken } from './auth'; // Added verifyToken
 // Import the new DB functions to be mocked
 import {
   getUserByUsername as dbGetUserByUsername,
@@ -9,16 +9,16 @@ import {
   getAll as dbGetAll
 } from './db';
 import { hash, compare } from 'bcryptjs';
-import type { User } from '@/types';
-import { sign } from 'jsonwebtoken';
+import type { User, JWTPayload } from '@/types'; // Added JWTPayload
+import { sign, verify } from 'jsonwebtoken'; // Added verify for mocking
 
 // Mock the specific db functions that auth.ts uses
 jest.mock('./db', () => ({
-  getUserByUsername: jest.fn(), // Correct: use actual exported name
-  getUserById: jest.fn(),       // Correct: use actual exported name
-  updateUser: jest.fn(),        // Correct: use actual exported name
-  getUserByUsernameWithPassword: jest.fn(), // Correct: use actual exported name
-  getAll: jest.fn(),            // Correct: use actual exported name
+  getUserByUsername: jest.fn(),
+  getUserById: jest.fn(),
+  updateUser: jest.fn(),
+  getUserByUsernameWithPassword: jest.fn(),
+  getAll: jest.fn(),
 }));
 
 // Mock bcryptjs
@@ -27,8 +27,10 @@ jest.mock('bcryptjs', () => ({
   compare: jest.fn(),
 }));
 
+// Mock jsonwebtoken
 jest.mock('jsonwebtoken', () => ({
   sign: jest.fn(),
+  verify: jest.fn(), // Added mock for verify
 }));
 
 const mockUserNoForceChange: User = {
@@ -37,7 +39,7 @@ const mockUserNoForceChange: User = {
   name: 'Test User 1',
   email: 'test1@example.com',
   apartmentId: 'aptTest1',
-  role: 'user',
+  role: 'tenant', // Updated role
   forcePasswordChange: false,
 };
 
@@ -61,13 +63,12 @@ const mockedDbGetAll = dbGetAll as jest.Mock;
 const mockedBcryptHash = hash as jest.Mock;
 const mockedBcryptCompare = compare as jest.Mock;
 const mockedJwtSign = sign as jest.Mock;
+const mockedJwtVerify = verify as jest.Mock; // Added mock for verify
 
-// Define the JWT_SECRET that auth.ts will use, matching its logic
 const testJwtSecret = process.env.JWT_SECRET || 'your-default-dev-secret-key-please-change-for-prod';
 
 describe('Auth Library', () => {
   beforeEach(() => {
-    // Reset mocks before each test
     mockedDbGetUserByUsername.mockReset();
     mockedDbGetUserById.mockReset();
     mockedDbUpdateUser.mockReset();
@@ -76,11 +77,10 @@ describe('Auth Library', () => {
     mockedBcryptHash.mockReset();
     mockedBcryptCompare.mockReset();
     mockedJwtSign.mockReset();
-
-    // Mock process.env for JWT_SECRET if needed, or ensure auth.ts uses a configurable one for tests
-    // For now, we assume auth.ts uses the same logic as defined in testJwtSecret
+    mockedJwtVerify.mockReset(); // Reset verify mock
   });
 
+  // ... existing describe blocks for findUserByUsername, getUserById, etc. ...
   describe('findUserByUsername', () => {
     it('should return a user if username exists', async () => {
       mockedDbGetUserByUsername.mockResolvedValue(mockUserNoForceChange);
@@ -126,7 +126,7 @@ describe('Auth Library', () => {
   describe('updateUserPassword', () => {
     const userIdToUpdate = 'user1';
     const newPassword = 'newSecurePassword123';
-    const updatedUserMock = { ...mockUserNoForceChange, forcePasswordChange: false };
+    const updatedUserMock = { ...mockUserNoForceChange, role: 'tenant', forcePasswordChange: false };
 
     it('should update password and return updated user', async () => {
       mockedDbUpdateUser.mockResolvedValue(updatedUserMock);
@@ -152,7 +152,7 @@ describe('Auth Library', () => {
   });
 
   describe('getUsersByApartmentId', () => {
-    const mockUserApt1User1: User = { ...mockUserNoForceChange, id: 'user10', apartmentId: 'apt1' };
+    const mockUserApt1User1: User = { ...mockUserNoForceChange, id: 'user10', apartmentId: 'apt1', role: 'tenant' };
     const mockUserApt1User2: User = { ...mockUserWithForceChange, id: 'user11', apartmentId: 'apt1' };
 
     it('should return users for a given apartmentId', async () => {
@@ -160,7 +160,7 @@ describe('Auth Library', () => {
       mockedDbGetAll.mockResolvedValue(dbUsers);
       const users = await getUsersByApartmentId('apt1');
       expect(mockedDbGetAll).toHaveBeenCalledWith('SELECT id, username, name, email, apartmentId, role, forcePasswordChange FROM Users WHERE apartmentId = ?', ['apt1']);
-      expect(users).toEqual(dbUsers.map(u => ({...u, forcePasswordChange: Boolean(u.forcePasswordChange)}))); // auth.ts still does a map
+      expect(users).toEqual(dbUsers.map(u => ({...u, forcePasswordChange: Boolean(u.forcePasswordChange)})));
     });
 
     it('should return an empty array if no users are found', async () => {
@@ -187,7 +187,7 @@ describe('Auth Library', () => {
       name: 'Login Test User',
       email: 'login@example.com',
       apartmentId: 'aptLogin',
-      role: 'user',
+      role: 'tenant', // Updated role
       forcePasswordChange: false,
       passwordHash: storedHashedPassword,
     };
@@ -198,7 +198,7 @@ describe('Auth Library', () => {
       name: 'Login Test User',
       email: 'login@example.com',
       apartmentId: 'aptLogin',
-      role: 'user',
+      role: 'tenant', // Updated role
       forcePasswordChange: false,
     };
 
@@ -212,16 +212,13 @@ describe('Auth Library', () => {
 
       expect(mockedDbGetUserByUsernameWithPassword).toHaveBeenCalledWith(testUsername);
       expect(mockedBcryptCompare).toHaveBeenCalledWith(testPassword, storedHashedPassword);
-      expect(mockedJwtSign).toHaveBeenCalledWith(
-        {
-          id: expectedUserAfterLogin.id,
-          username: expectedUserAfterLogin.username,
-          role: expectedUserAfterLogin.role,
-          apartmentId: expectedUserAfterLogin.apartmentId,
-        },
-        testJwtSecret, // Use the same secret as auth.ts
-        { expiresIn: '1h' }
-      );
+      const expectedPayload: JWTPayload = {
+        id: expectedUserAfterLogin.id,
+        username: expectedUserAfterLogin.username,
+        role: expectedUserAfterLogin.role,
+        apartmentId: expectedUserAfterLogin.apartmentId,
+      };
+      expect(mockedJwtSign).toHaveBeenCalledWith(expectedPayload, testJwtSecret, { expiresIn: '1h' });
       expect(result).toBeDefined();
       expect(result?.user).toEqual(expectedUserAfterLogin);
       expect(result?.token).toBe(expectedToken);
@@ -271,6 +268,37 @@ describe('Auth Library', () => {
       const result = await login(testUsername, testPassword);
       expect(result).toBeUndefined();
       expect(mockedJwtSign).toHaveBeenCalled();
+    });
+  });
+
+  describe('verifyToken', () => {
+    const mockPayload: JWTPayload = {
+      id: 'user123',
+      username: 'verifier',
+      role: 'tenant',
+      apartmentId: 'aptVerify',
+    };
+    const mockToken = 'valid.mock.token';
+
+    it('should return decoded payload for a valid token', () => {
+      mockedJwtVerify.mockReturnValue(mockPayload);
+      const result = verifyToken(mockToken);
+      expect(mockedJwtVerify).toHaveBeenCalledWith(mockToken, testJwtSecret);
+      expect(result).toEqual(mockPayload);
+    });
+
+    it('should return null if token is invalid or verification fails', () => {
+      mockedJwtVerify.mockImplementation(() => { throw new Error('Invalid signature'); });
+      const result = verifyToken('invalid.token');
+      expect(result).toBeNull();
+    });
+
+    it('should return null if token is expired (verify throws specific error)', () => {
+      const expiredError = new Error('jwt expired');
+      (expiredError as any).name = 'TokenExpiredError';
+      mockedJwtVerify.mockImplementation(() => { throw expiredError; });
+      const result = verifyToken('expired.token');
+      expect(result).toBeNull();
     });
   });
 });
