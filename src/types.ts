@@ -1,8 +1,10 @@
-export type UserRole = 'admin' | 'user';
+// UserRole is more specific now, admin for administrators, tenant for apartment users.
+export type UserRole = 'admin' | 'tenant';
 
 export interface Apartment {
   id: string; // e.g., 'stensvoll', 'nowak'
   name: string; // e.g., "Stensvoll Household"
+  address?: string; // Optional address field
 }
 
 export interface User {
@@ -55,4 +57,13 @@ export interface Conflict {
   createdAt: string; // ISO date string
   resolvedAt?: string; // ISO date string, optional
   resolutionNotes?: string; // Notes on how the conflict was resolved or why it was ignored
+}
+
+// Represents the payload of the JWT for session management
+export interface JWTPayload {
+  id: string; // User ID
+  username: string;
+  role: UserRole;
+  apartmentId: string;
+  // Add other non-sensitive fields needed for session validation or quick access
 }

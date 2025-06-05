@@ -23,7 +23,7 @@ const schema = `
     name TEXT NOT NULL,
     email TEXT UNIQUE,
     apartmentId TEXT NOT NULL,
-    role TEXT NOT NULL, -- 'admin' or 'user'
+    role TEXT NOT NULL, -- 'admin' or 'tenant'
     passwordHash TEXT NOT NULL, -- Store hashed passwords, not plaintext
     forcePasswordChange BOOLEAN DEFAULT FALSE,
     FOREIGN KEY (apartmentId) REFERENCES Apartments(id)
