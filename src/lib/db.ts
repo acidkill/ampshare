@@ -159,10 +159,9 @@ async function runMigrations(db: SQLiteDatabase): Promise<void> {
 
 /**
  * Seeds the database with initial data
+ * @param db The database instance to use
  */
-async function seedDatabase(): Promise<void> {
-  const db = await getDb();
-  
+async function seedDatabase(db: SQLiteDatabase): Promise<void> {
   try {
     // Check if we already have users
     const userCount = await db.get<{ count: number }>('SELECT COUNT(*) as count FROM users');
@@ -249,7 +248,7 @@ export async function getDb(): Promise<SQLiteDatabase> {
       
       // Seed initial data if needed
       console.log('Seeding database if needed...');
-      await seedDatabase();
+      await seedDatabase(newDbInstance);
       
     } catch (dbError) {
       console.error('Database initialization error:', dbError);
