@@ -1,20 +1,15 @@
-/**
- * Centralized web component registration and exports.
- * Import and register all web components here.
- */
-
 import { registerWebComponent } from './registry';
 
 // Import all component constructors
 import { AutosizeTextarea } from './autosize-textarea';
 import { OtherComponent } from './other-component';
-// TODO: Import other components as needed
+// ... import other components as needed
 
 // Register all components at once
 export function registerAllComponents() {
   registerWebComponent('mce-autosize-textarea', AutosizeTextarea);
   registerWebComponent('mce-other-component', OtherComponent);
-  // TODO: Register other components
+  // ... register other components
 }
 
 // For hot module replacement support
@@ -23,7 +18,7 @@ if (module.hot) {
     // Any cleanup needed for HMR
     console.log('HMR: Web components module disposed');
   });
-
+  
   module.hot.accept(() => {
     console.log('HMR: Web components module updated');
   });
