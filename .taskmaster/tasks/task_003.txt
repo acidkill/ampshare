@@ -1,0 +1,50 @@
+# Task ID: 3
+# Title: Centralize Web Component Registration
+# Status: pending
+# Dependencies: 1, 2
+# Priority: high
+# Description: Refactor the codebase to centralize all web component registrations and implement proper cleanup during hot module replacement.
+# Details:
+Create a centralized system for web component registration:
+
+1. Create an index.ts file that imports and registers all web components
+2. Implement a cleanup mechanism for hot module replacement
+3. Ensure components are only registered once during the application lifecycle
+
+```typescript
+// web-components/index.ts
+import { registerWebComponent } from './registry';
+
+// Import all component constructors
+import { AutosizeTextarea } from './autosize-textarea';
+import { OtherComponent } from './other-component';
+// ... other components
+
+// Register all components at once
+export function registerAllComponents() {
+  registerWebComponent('mce-autosize-textarea', AutosizeTextarea);
+  registerWebComponent('mce-other-component', OtherComponent);
+  // ... register other components
+}
+
+// For hot module replacement support
+if (module.hot) {
+  module.hot.dispose(() => {
+    // Any cleanup needed for HMR
+    console.log('HMR: Web components module disposed');
+  });
+  
+  module.hot.accept(() => {
+    console.log('HMR: Web components module updated');
+  });
+}
+
+// Register all components by default
+registerAllComponents();
+```
+
+# Test Strategy:
+1. Test that all components are registered correctly
+2. Verify hot module replacement works without errors
+3. Test that components are registered only once even after code changes
+4. Verify no console errors related to duplicate registration

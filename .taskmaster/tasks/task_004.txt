@@ -1,0 +1,56 @@
+# Task ID: 4
+# Title: Implement Multi-stage Docker Build
+# Status: in-progress
+# Dependencies: None
+# Priority: high
+# Description: Create a multi-stage Dockerfile to optimize the build process and reduce final image size.
+# Details:
+Create a new Dockerfile that implements multi-stage builds following the pattern in the PRD:
+
+```dockerfile
+# Stage 1: Build
+FROM node:20-alpine AS builder
+WORKDIR /app
+
+# Copy package files and install dependencies
+COPY package*.json ./
+RUN npm ci
+
+# Copy source code and build
+COPY . .
+RUN npm run build
+
+# Stage 2: Production
+FROM node:20-alpine
+WORKDIR /app
+ENV NODE_ENV=production
+
+# Copy only production dependencies
+COPY --from=builder /app/package*.json ./
+RUN npm ci --only=production && \
+    npm cache clean --force
+
+# Copy build output and public files
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/next.config.js ./
+
+# Set user to non-root for security
+USER node
+
+EXPOSE 3000
+CMD ["npm", "start"]
+```
+
+This implementation:
+1. Uses Alpine-based images for smaller size
+2. Separates build and production stages
+3. Only installs production dependencies in the final image
+4. Cleans npm cache to reduce image size
+5. Uses a non-root user for security
+
+# Test Strategy:
+1. Build the Docker image and verify it builds successfully
+2. Measure the final image size to ensure it's under 200MB
+3. Test the application runs correctly in the container
+4. Verify build layers are properly cached on subsequent builds
