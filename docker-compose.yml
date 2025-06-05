@@ -1,0 +1,21 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3917:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_PATH=/app/data/ampshare.db
+      - NEXTAUTH_URL=http://localhost:3000
+      - NEXTAUTH_SECRET=your-secret-key-for-docker
+      - NEXTAUTH_CREDENTIALS_PROVIDER_EMAIL=admin@example.com
+      - NEXTAUTH_CREDENTIALS_PASSWORD=changeme123
+      - DEBUG=true
+    volumes:
+      - app_data:/app/data
+    restart: unless-stopped
+
+volumes:
+  app_data:
