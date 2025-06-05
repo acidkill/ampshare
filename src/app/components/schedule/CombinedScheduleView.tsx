@@ -89,11 +89,22 @@ const CombinedScheduleView: React.FC<CombinedScheduleViewProps> = ({
                 e => e.day === day && e.time === time
               );
 
+              const uniqueApartmentIdsInSlot = new Set(entriesForSlot.map(e => e.apartmentId));
+              const isConflictingSlot = uniqueApartmentIdsInSlot.size > 1;
+
+              const currentSlotStyle = {
+                ...timeSlotCellStyle,
+                ...(isConflictingSlot && { 
+                  backgroundColor: '#FFEFCF', // Light orange/yellowish for conflict indication
+                  // border: `2px solid ${apartmentColors.conflict}` // Alternative: border highlight
+                }),
+              };
+
               return (
                 <div 
                   key={`${day}-${time}`}
-                  style={timeSlotCellStyle}
-                  aria-label={`Slot for ${day} at ${time}`}
+                  style={currentSlotStyle}
+                  aria-label={`Slot for ${day} at ${time}${isConflictingSlot ? ', conflicting bookings' : ''}`}
                 >
                   {entriesForSlot.length > 0 ? (
                     entriesForSlot.map(entry => {
