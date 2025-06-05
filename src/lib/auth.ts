@@ -1,8 +1,15 @@
 import type { User, SeedUser } from '@/types';
-import { getDb } from './db'; // Assuming you have a db connection setup (e.g., in src/lib/db.ts)
-import { hash, compare } from 'bcryptjs'; // For password hashing and comparison
-import { v4 as uuidv4 } from 'uuid'; // Using uuid for user IDs if not using hardcoded ones
-import { sign } from 'jsonwebtoken'; // For JWT generation
+// Import specific database functions instead of getDb directly
+import { 
+  getUserByUsername as dbGetUserByUsername,
+  getUserById as dbGetUserById,
+  updateUser as dbUpdateUser,
+  getUserByUsernameWithPassword as dbGetUserByUsernameWithPassword,
+  getAll as dbGetAll // For getUsersByApartmentId
+} from './db'; 
+import { hash, compare } from 'bcryptjs';
+import { v4 as uuidv4 } from 'uuid';
+import { sign } from 'jsonwebtoken';
 
 // This array should primarily be used for seeding the database, not for runtime user management.
 // IMPORTANT: Passwords are hardcoded for demonstration. DO NOT use this in production.
@@ -14,140 +21,109 @@ export const hardcodedUsers: SeedUser[] = [
   { id: 'user4', username: 'toni_nowak', password: 'password2345!123', apartmentId: 'nowak', name: 'Toni (Nowak)', role: 'user', forcePasswordChange: true },
 ];
 
-// Note: hardcodedUsers is now primarily for initial seeding in db.ts
-// Runtime operations should use the database.
-
 export const findUserByUsername = async (username: string): Promise<User | undefined> => {
-  const db = await getDb();
-  if (!db) {
-    console.error("Database connection not available in findUserByUsername");
+  try {
+    const user = await dbGetUserByUsername(username);
+    // The dbGetUserByUsername from db.ts already maps DB user to User type, including boolean conversion
+    return user;
+  } catch (error) {
+    console.error(`Error in findUserByUsername for ${username}:`, error);
     return undefined;
   }
-  const user = await db.get<User>('SELECT * FROM users WHERE username = ?', username);
-  // SQLite boolean is 0 or 1, convert to boolean
-  if (user) {
-    user.forcePasswordChange = Boolean(user.forcePasswordChange);
-  }
-  return user;
 };
 
 export const getUserById = async (userId: string): Promise<User | undefined> => {
-  const db = await getDb();
-  if (!db) {
-    console.error("Database connection not available in getUserById");
+  try {
+    const user = await dbGetUserById(userId);
+    // The dbGetUserById from db.ts already maps DB user to User type
+    return user;
+  } catch (error) {
+    console.error(`Error in getUserById for ${userId}:`, error);
     return undefined;
   }
-  const user = await db.get<User>('SELECT * FROM users WHERE id = ?', userId);
-   // SQLite boolean is 0 or 1, convert to boolean
-  if (user) {
-    user.forcePasswordChange = Boolean(user.forcePasswordChange);
-  }
-  return user;
 };
 
 export const updateUserPassword = async (userId: string, newPassword: string): Promise<User | undefined> => {
-  const db = await getDb();
-  if (!db) {
-    console.error("Database connection not available in updateUserPassword");
-    return undefined;
-  }
-  let hashedPassword;
   try {
-    hashedPassword = await hash(newPassword, 10);
+    // dbUpdateUser handles hashing and updating
+    const updatedUser = await dbUpdateUser(userId, { 
+      password: newPassword, 
+      forcePasswordChange: false // Typically, password change resets this flag
+    });
+    return updatedUser;
   } catch (error) {
-    console.error("Error hashing password:", error);
-    return undefined;
-  }
-
-  try {
-    const result = await db.run('UPDATE users SET password = ?, forcePasswordChange = 0 WHERE id = ?', hashedPassword, userId);
-
-    if (result.changes && result.changes > 0) {
-      return getUserById(userId); // Fetch the updated user
-    }
-    return undefined; // User not found or not updated
-  } catch (error) {
-    console.error("Error updating user password in database:", error);
+    console.error(`Error updating password for user ${userId}:`, error);
     return undefined;
   }
 };
 
 // Internal function to find a user by username, including their password hash.
-// This should NOT be exported and is only for use by the login function.
-const _findUserByUsernameWithPassword = async (username: string): Promise<(User & { password?: string }) | undefined> => {
-  const db = await getDb();
-  if (!db) {
-    console.error("Database connection not available in _findUserByUsernameWithPassword");
+const _findUserByUsernameWithPassword = async (username: string): Promise<(User & { passwordHash: string }) | undefined> => {
+  try {
+    // This function from db.ts returns the user with passwordHash
+    return await dbGetUserByUsernameWithPassword(username);
+  } catch (error) {
+    console.error(`Error in _findUserByUsernameWithPassword for ${username}:`, error);
     return undefined;
   }
-  // Select password here, which is not done in the exported findUserByUsername
-  const user = await db.get<User & { password?: string }>('SELECT * FROM users WHERE username = ?', username);
-  if (user) {
-    user.forcePasswordChange = Boolean(user.forcePasswordChange);
-  }
-  return user;
 };
 
-// TODO: Use a strong, environment-specific secret and manage it properly (e.g., via .env files)
-const JWT_SECRET = 'your-super-secret-and-long-jwt-secret-key'; // Placeholder
+// Use environment variable for JWT_SECRET, with a fallback for local dev if not set.
+// Ensure this is set in your .env.local or environment for production.
+const JWT_SECRET = process.env.JWT_SECRET || 'your-default-dev-secret-key-please-change-for-prod';
+if (JWT_SECRET === 'your-default-dev-secret-key-please-change-for-prod' && process.env.NODE_ENV === 'production') {
+  console.warn("WARNING: Using default JWT_SECRET in production. This is insecure. Set a strong JWT_SECRET environment variable.");
+}
+
 
 export const login = async (username: string, passwordInput: string): Promise<{ user: User, token: string } | undefined> => {
-  const userWithPassword = await _findUserByUsernameWithPassword(username);
+  const userWithPasswordHash = await _findUserByUsernameWithPassword(username);
 
-  if (!userWithPassword || !userWithPassword.password) {
-    // User not found or password not set in DB (should not happen for seeded users with password)
+  if (!userWithPasswordHash || !userWithPasswordHash.passwordHash) {
+    console.log(`Login attempt: User ${username} not found or no password hash.`);
     return undefined;
   }
 
   try {
-    const passwordsMatch = await compare(passwordInput, userWithPassword.password);
+    const passwordsMatch = await compare(passwordInput, userWithPasswordHash.passwordHash);
     if (passwordsMatch) {
-      // IMPORTANT: Destructure user and explicitly exclude password before returning
-      const { password, ...userWithoutPassword } = userWithPassword;
+      // Exclude passwordHash from the user object returned to the client
+      const { passwordHash, ...userWithoutPasswordHash } = userWithPasswordHash;
       
-      // Generate JWT
       const payload = {
-        id: userWithoutPassword.id,
-        username: userWithoutPassword.username,
-        role: userWithoutPassword.role,
-        apartmentId: userWithoutPassword.apartmentId,
+        id: userWithoutPasswordHash.id,
+        username: userWithoutPasswordHash.username,
+        role: userWithoutPasswordHash.role,
+        apartmentId: userWithoutPasswordHash.apartmentId,
       };
 
       try {
-        const token = sign(payload, JWT_SECRET, { expiresIn: '1h' }); // Token expires in 1 hour
-        return { user: userWithoutPassword, token };
+        const token = sign(payload, JWT_SECRET, { expiresIn: '1h' });
+        return { user: userWithoutPasswordHash, token };
       } catch (jwtError) {
         console.error("Error signing JWT:", jwtError);
-        return undefined; // Failed to generate token
+        return undefined;
       }
     }
-    return undefined; // Passwords don't match
+    console.log(`Login attempt: Password mismatch for user ${username}.`);
+    return undefined;
   } catch (error) {
     console.error("Error comparing passwords:", error);
-    return undefined; // Error during comparison
+    return undefined;
   }
 };
 
-// Function to get all users associated with a specific apartment ID
 export const getUsersByApartmentId = async (apartmentId: string): Promise<User[]> => {
-  const db = await getDb();
-  if (!db) {
-    console.error("Database connection not available in getUsersByApartmentId");
-    return []; // Return empty array if DB connection fails
-  }
   try {
-    const users = await db.all<User[]>('SELECT * FROM users WHERE apartmentId = ?', apartmentId);
-    // SQLite boolean is 0 or 1 for forcePasswordChange, convert to boolean
-    if (users) {
-      return users.map(user => ({
+    // Assuming User type in db.ts already handles forcePasswordChange conversion if needed
+    const users = await dbGetAll<User>('SELECT id, username, name, email, apartmentId, role, forcePasswordChange FROM Users WHERE apartmentId = ?', [apartmentId]);
+    // Ensure forcePasswordChange is boolean
+     return users.map(user => ({
         ...user,
         forcePasswordChange: Boolean(user.forcePasswordChange),
       }));
-    }
-    return []; // Return empty array if no users found
   } catch (error) {
     console.error(`Error fetching users for apartmentId ${apartmentId}:`, error);
-    return []; // Return empty array on error
+    return [];
   }
 };
-

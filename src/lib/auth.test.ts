@@ -1,11 +1,24 @@
-import { findUserByUsername, getUserById, updateUserPassword, getUsersByApartmentId, login, hardcodedUsers } from './auth';
-import { getDb } from './db'; // This will be our mock
-import { hash } from 'bcryptjs';
-import type { User } from '@/types';
 
-// Mock the db module
+import { findUserByUsername, getUserById, updateUserPassword, getUsersByApartmentId, login } from './auth';
+// Import the new DB functions to be mocked
+import {
+  getUserByUsername as dbGetUserByUsername,
+  getUserById as dbGetUserById,
+  updateUser as dbUpdateUser,
+  getUserByUsernameWithPassword as dbGetUserByUsernameWithPassword,
+  getAll as dbGetAll
+} from './db';
+import { hash, compare } from 'bcryptjs';
+import type { User } from '@/types';
+import { sign } from 'jsonwebtoken';
+
+// Mock the specific db functions that auth.ts uses
 jest.mock('./db', () => ({
-  getDb: jest.fn(),
+  getUserByUsername: jest.fn(), // Correct: use actual exported name
+  getUserById: jest.fn(),       // Correct: use actual exported name
+  updateUser: jest.fn(),        // Correct: use actual exported name
+  getUserByUsernameWithPassword: jest.fn(), // Correct: use actual exported name
+  getAll: jest.fn(),            // Correct: use actual exported name
 }));
 
 // Mock bcryptjs
@@ -38,92 +51,73 @@ const mockUserWithForceChange: User = {
   forcePasswordChange: true,
 };
 
-// Cast getDb to its Jest Mock type for easier use
-const mockedGetDb = getDb as jest.Mock;
-const mockedHash = hash as jest.Mock;
-const mockedBcryptCompare = require('bcryptjs').compare as jest.Mock;
-const mockedJwtSign = require('jsonwebtoken').sign as jest.Mock;
+// Cast mocked DB functions to their Jest Mock type
+const mockedDbGetUserByUsername = dbGetUserByUsername as jest.Mock;
+const mockedDbGetUserById = dbGetUserById as jest.Mock;
+const mockedDbUpdateUser = dbUpdateUser as jest.Mock;
+const mockedDbGetUserByUsernameWithPassword = dbGetUserByUsernameWithPassword as jest.Mock;
+const mockedDbGetAll = dbGetAll as jest.Mock;
+
+const mockedBcryptHash = hash as jest.Mock;
+const mockedBcryptCompare = compare as jest.Mock;
+const mockedJwtSign = sign as jest.Mock;
+
+// Define the JWT_SECRET that auth.ts will use, matching its logic
+const testJwtSecret = process.env.JWT_SECRET || 'your-default-dev-secret-key-please-change-for-prod';
 
 describe('Auth Library', () => {
-  let mockDbInstance: any;
-
   beforeEach(() => {
     // Reset mocks before each test
-    mockedGetDb.mockReset();
-    mockedHash.mockReset();
-    if (mockedBcryptCompare) mockedBcryptCompare.mockReset(); // Reset compare mock
-    if (mockedJwtSign) mockedJwtSign.mockReset(); // Reset JWT sign mock
+    mockedDbGetUserByUsername.mockReset();
+    mockedDbGetUserById.mockReset();
+    mockedDbUpdateUser.mockReset();
+    mockedDbGetUserByUsernameWithPassword.mockReset();
+    mockedDbGetAll.mockReset();
+    mockedBcryptHash.mockReset();
+    mockedBcryptCompare.mockReset();
+    mockedJwtSign.mockReset();
 
-    // Setup a default mock DB instance for most tests
-    mockDbInstance = {
-      get: jest.fn(),
-      run: jest.fn(),
-      all: jest.fn(), // Added for getUsersByApartmentId
-    };
-    mockedGetDb.mockReturnValue(Promise.resolve(mockDbInstance));
+    // Mock process.env for JWT_SECRET if needed, or ensure auth.ts uses a configurable one for tests
+    // For now, we assume auth.ts uses the same logic as defined in testJwtSecret
   });
 
   describe('findUserByUsername', () => {
-    it('should return a user if username exists and forcePasswordChange is 0', async () => {
-      // DB returns user with forcePasswordChange as 0 (number)
-      mockDbInstance.get.mockResolvedValue({ ...mockUserNoForceChange, forcePasswordChange: 0 });
+    it('should return a user if username exists', async () => {
+      mockedDbGetUserByUsername.mockResolvedValue(mockUserNoForceChange);
       const user = await findUserByUsername('testuser1');
-      expect(mockDbInstance.get).toHaveBeenCalledWith('SELECT * FROM users WHERE username = ?', 'testuser1');
-      expect(user).toEqual(mockUserNoForceChange); // Expect boolean false
-      expect(user?.forcePasswordChange).toBe(false);
-    });
-
-    it('should return a user if username exists and forcePasswordChange is 1', async () => {
-      // DB returns user with forcePasswordChange as 1 (number)
-      mockDbInstance.get.mockResolvedValue({ ...mockUserWithForceChange, forcePasswordChange: 1 });
-      const user = await findUserByUsername('testuser2');
-      expect(mockDbInstance.get).toHaveBeenCalledWith('SELECT * FROM users WHERE username = ?', 'testuser2');
-      expect(user).toEqual(mockUserWithForceChange); // Expect boolean true
-      expect(user?.forcePasswordChange).toBe(true);
+      expect(mockedDbGetUserByUsername).toHaveBeenCalledWith('testuser1');
+      expect(user).toEqual(mockUserNoForceChange);
     });
 
     it('should return undefined if username does not exist', async () => {
-      mockDbInstance.get.mockResolvedValue(undefined);
+      mockedDbGetUserByUsername.mockResolvedValue(undefined);
       const user = await findUserByUsername('nonexistent');
       expect(user).toBeUndefined();
     });
 
-    it('should return undefined if getDb returns null (db connection fails)', async () => {
-      mockedGetDb.mockReturnValue(Promise.resolve(null)); // Simulate DB connection failure
+    it('should return undefined if db function throws', async () => {
+      mockedDbGetUserByUsername.mockRejectedValue(new Error('DB error'));
       const user = await findUserByUsername('anyuser');
       expect(user).toBeUndefined();
-      // Check if console.error was called (optional, depends on if you want to assert logging)
-      // This requires spying on console.error
     });
   });
 
-  // More tests for getUserById and updateUserPassword will go here
-
   describe('getUserById', () => {
-    it('should return a user if ID exists and forcePasswordChange is 0', async () => {
-      mockDbInstance.get.mockResolvedValue({ ...mockUserNoForceChange, forcePasswordChange: 0 });
-      const user = await getUserById('user1');
-      expect(mockDbInstance.get).toHaveBeenCalledWith('SELECT * FROM users WHERE id = ?', 'user1');
-      expect(user).toEqual(mockUserNoForceChange);
-      expect(user?.forcePasswordChange).toBe(false);
-    });
-
-    it('should return a user if ID exists and forcePasswordChange is 1', async () => {
-      mockDbInstance.get.mockResolvedValue({ ...mockUserWithForceChange, forcePasswordChange: 1 });
+    it('should return a user if ID exists', async () => {
+      mockedDbGetUserById.mockResolvedValue(mockUserWithForceChange);
       const user = await getUserById('user2');
-      expect(mockDbInstance.get).toHaveBeenCalledWith('SELECT * FROM users WHERE id = ?', 'user2');
+      expect(mockedDbGetUserById).toHaveBeenCalledWith('user2');
       expect(user).toEqual(mockUserWithForceChange);
-      expect(user?.forcePasswordChange).toBe(true);
     });
 
     it('should return undefined if ID does not exist', async () => {
-      mockDbInstance.get.mockResolvedValue(undefined);
+      mockedDbGetUserById.mockResolvedValue(undefined);
       const user = await getUserById('nonexistentid');
       expect(user).toBeUndefined();
     });
 
-    it('should return undefined if getDb returns null (db connection fails)', async () => {
-      mockedGetDb.mockReturnValue(Promise.resolve(null));
+     it('should return undefined if db function throws', async () => {
+      mockedDbGetUserById.mockRejectedValue(new Error('DB error'));
       const user = await getUserById('anyid');
       expect(user).toBeUndefined();
     });
@@ -132,130 +126,53 @@ describe('Auth Library', () => {
   describe('updateUserPassword', () => {
     const userIdToUpdate = 'user1';
     const newPassword = 'newSecurePassword123';
-    const newHashedPassword = 'hashedNewSecurePassword123';
+    const updatedUserMock = { ...mockUserNoForceChange, forcePasswordChange: false };
 
-    beforeEach(() => {
-      mockedHash.mockResolvedValue(newHashedPassword);
-      // Ensure getUserById (called internally) also uses a fresh mock for its db call
-      // For simplicity here, we assume a successful update leads to a successful fetch.
-      // A more granular test could mock db.get for the internal getUserById separately.
-      mockDbInstance.get.mockImplementation(async (query: string, id: string) => {
-        if (query.includes('SELECT * FROM users WHERE id = ?') && id === userIdToUpdate) {
-          return { ...mockUserNoForceChange, id: userIdToUpdate, forcePasswordChange: 0 };
-        }
-        return undefined;
+    it('should update password and return updated user', async () => {
+      mockedDbUpdateUser.mockResolvedValue(updatedUserMock);
+      const result = await updateUserPassword(userIdToUpdate, newPassword);
+      expect(mockedDbUpdateUser).toHaveBeenCalledWith(userIdToUpdate, {
+        password: newPassword,
+        forcePasswordChange: false,
       });
+      expect(result).toEqual(updatedUserMock);
     });
 
-    it('should update password, hash it, set forcePasswordChange to 0, and return updated user', async () => {
-      mockDbInstance.run.mockResolvedValue({ changes: 1 });
-
-      const updatedUser = await updateUserPassword(userIdToUpdate, newPassword);
-
-      expect(mockedHash).toHaveBeenCalledWith(newPassword, 10);
-      expect(mockDbInstance.run).toHaveBeenCalledWith(
-        'UPDATE users SET password = ?, forcePasswordChange = 0 WHERE id = ?',
-        newHashedPassword,
-        userIdToUpdate
-      );
-      expect(mockDbInstance.get).toHaveBeenCalledWith('SELECT * FROM users WHERE id = ?', userIdToUpdate); // Check internal getUserById call
-      expect(updatedUser).toBeDefined();
-      expect(updatedUser?.id).toBe(userIdToUpdate);
-      expect(updatedUser?.forcePasswordChange).toBe(false);
+    it('should return undefined if dbUpdateUser fails or user not found', async () => {
+      mockedDbUpdateUser.mockResolvedValue(undefined);
+      const result = await updateUserPassword('nonexistentUser', newPassword);
+      expect(result).toBeUndefined();
     });
 
-    it('should return undefined if user ID to update is not found (db.run affects 0 rows)', async () => {
-      mockDbInstance.run.mockResolvedValue({ changes: 0 }); // Simulate no user found/updated
-      const updatedUser = await updateUserPassword('nonexistentUser', newPassword);
-      expect(mockDbInstance.run).toHaveBeenCalledWith(
-        'UPDATE users SET password = ?, forcePasswordChange = 0 WHERE id = ?',
-        newHashedPassword,
-        'nonexistentUser'
-      );
-      expect(updatedUser).toBeUndefined();
-    });
-
-    it('should return undefined if getDb returns null (db connection fails)', async () => {
-      mockedGetDb.mockReturnValue(Promise.resolve(null));
-      const updatedUser = await updateUserPassword(userIdToUpdate, newPassword);
-      expect(mockedHash).not.toHaveBeenCalled(); // Hash shouldn't be called if DB fails first
-      expect(mockDbInstance.run).not.toHaveBeenCalled();
-      expect(updatedUser).toBeUndefined();
-    });
-
-    it('should return undefined if hashing fails', async () => {
-      mockedHash.mockRejectedValue(new Error('Hashing failed'));
-      const updatedUser = await updateUserPassword(userIdToUpdate, newPassword);
-      expect(mockedHash).toHaveBeenCalledWith(newPassword, 10);
-      expect(mockDbInstance.run).not.toHaveBeenCalled();
-      expect(updatedUser).toBeUndefined();
-      // You might want to assert that an error is logged or handled
-    });
-
-    it('should return undefined if db.run fails (e.g., database error during update)', async () => {
-      mockDbInstance.run.mockRejectedValue(new Error('DB run error'));
-      const updatedUser = await updateUserPassword(userIdToUpdate, newPassword);
-      expect(mockedHash).toHaveBeenCalledWith(newPassword, 10);
-      expect(mockDbInstance.run).toHaveBeenCalled();
-      expect(updatedUser).toBeUndefined();
+    it('should return undefined if dbUpdateUser throws an error', async () => {
+        mockedDbUpdateUser.mockRejectedValue(new Error('DB update error'));
+        const result = await updateUserPassword(userIdToUpdate, newPassword);
+        expect(result).toBeUndefined();
     });
   });
 
   describe('getUsersByApartmentId', () => {
-    const mockUserApt1User1: User = {
-      id: 'user10',
-      username: 'apt1user1',
-      name: 'Apt1 User1',
-      apartmentId: 'apt1',
-      role: 'user',
-      forcePasswordChange: false,
-    };
+    const mockUserApt1User1: User = { ...mockUserNoForceChange, id: 'user10', apartmentId: 'apt1' };
+    const mockUserApt1User2: User = { ...mockUserWithForceChange, id: 'user11', apartmentId: 'apt1' };
 
-    const mockUserApt1User2: User = {
-      id: 'user11',
-      username: 'apt1user2',
-      name: 'Apt1 User2',
-      apartmentId: 'apt1',
-      role: 'admin',
-      forcePasswordChange: true,
-    };
-
-    it('should return users for a given apartmentId and convert forcePasswordChange', async () => {
-      const dbUsers = [
-        { ...mockUserApt1User1, forcePasswordChange: 0 }, // DB returns 0
-        { ...mockUserApt1User2, forcePasswordChange: 1 }, // DB returns 1
-      ];
-      mockDbInstance.all.mockResolvedValue(dbUsers);
-
+    it('should return users for a given apartmentId', async () => {
+      const dbUsers = [mockUserApt1User1, mockUserApt1User2];
+      mockedDbGetAll.mockResolvedValue(dbUsers);
       const users = await getUsersByApartmentId('apt1');
-
-      expect(mockDbInstance.all).toHaveBeenCalledWith('SELECT * FROM users WHERE apartmentId = ?', 'apt1');
-      expect(users).toHaveLength(2);
-      expect(users).toEqual([
-        mockUserApt1User1, // Expect boolean false
-        mockUserApt1User2, // Expect boolean true
-      ]);
-      expect(users[0].forcePasswordChange).toBe(false);
-      expect(users[1].forcePasswordChange).toBe(true);
+      expect(mockedDbGetAll).toHaveBeenCalledWith('SELECT id, username, name, email, apartmentId, role, forcePasswordChange FROM Users WHERE apartmentId = ?', ['apt1']);
+      expect(users).toEqual(dbUsers.map(u => ({...u, forcePasswordChange: Boolean(u.forcePasswordChange)}))); // auth.ts still does a map
     });
 
-    it('should return an empty array if no users are found for the apartmentId', async () => {
-      mockDbInstance.all.mockResolvedValue([]);
+    it('should return an empty array if no users are found', async () => {
+      mockedDbGetAll.mockResolvedValue([]);
       const users = await getUsersByApartmentId('nonexistent-apt');
       expect(users).toEqual([]);
     });
 
-    it('should return an empty array if getDb returns null (db connection fails)', async () => {
-      mockedGetDb.mockReturnValue(Promise.resolve(null));
+    it('should return an empty array if dbGetAll throws', async () => {
+      mockedDbGetAll.mockRejectedValue(new Error('DB getAll error'));
       const users = await getUsersByApartmentId('apt1');
       expect(users).toEqual([]);
-    });
-
-    it('should return an empty array if db.all fails', async () => {
-      mockDbInstance.all.mockRejectedValue(new Error('DB all error'));
-      const users = await getUsersByApartmentId('apt1');
-      expect(users).toEqual([]);
-      // Optionally, check for console.error if critical
     });
   });
 
@@ -264,8 +181,7 @@ describe('Auth Library', () => {
     const testPassword = 'password123';
     const storedHashedPassword = 'hashedPasswordExample';
 
-    // User mock that _findUserByUsernameWithPassword would return (includes password hash)
-    const mockUserForLoginDB: User & { password?: string } = {
+    const mockUserForLoginDB: User & { passwordHash: string } = {
       id: 'userLogin01',
       username: testUsername,
       name: 'Login Test User',
@@ -273,10 +189,9 @@ describe('Auth Library', () => {
       apartmentId: 'aptLogin',
       role: 'user',
       forcePasswordChange: false,
-      password: storedHashedPassword,
+      passwordHash: storedHashedPassword,
     };
 
-    // Expected user object returned by login (excludes password)
     const expectedUserAfterLogin: User = {
       id: 'userLogin01',
       username: testUsername,
@@ -288,14 +203,14 @@ describe('Auth Library', () => {
     };
 
     it('should return user object and token on successful login', async () => {
-      mockDbInstance.get.mockResolvedValue(mockUserForLoginDB); // Mock for _findUserByUsernameWithPassword
-      mockedBcryptCompare.mockResolvedValue(true); // Simulate password match
+      mockedDbGetUserByUsernameWithPassword.mockResolvedValue(mockUserForLoginDB);
+      mockedBcryptCompare.mockResolvedValue(true);
       const expectedToken = 'mocked.jwt.token';
       mockedJwtSign.mockReturnValue(expectedToken);
 
       const result = await login(testUsername, testPassword);
 
-      expect(mockDbInstance.get).toHaveBeenCalledWith('SELECT * FROM users WHERE username = ?', testUsername);
+      expect(mockedDbGetUserByUsernameWithPassword).toHaveBeenCalledWith(testUsername);
       expect(mockedBcryptCompare).toHaveBeenCalledWith(testPassword, storedHashedPassword);
       expect(mockedJwtSign).toHaveBeenCalledWith(
         {
@@ -304,63 +219,58 @@ describe('Auth Library', () => {
           role: expectedUserAfterLogin.role,
           apartmentId: expectedUserAfterLogin.apartmentId,
         },
-        'your-super-secret-and-long-jwt-secret-key', // This should match the secret in auth.ts
+        testJwtSecret, // Use the same secret as auth.ts
         { expiresIn: '1h' }
       );
       expect(result).toBeDefined();
       expect(result?.user).toEqual(expectedUserAfterLogin);
       expect(result?.token).toBe(expectedToken);
-      expect(result?.user).not.toHaveProperty('password');
+      expect(result?.user).not.toHaveProperty('passwordHash');
     });
 
-    it('should return undefined if user is not found by _findUserByUsernameWithPassword', async () => {
-      mockDbInstance.get.mockResolvedValue(undefined);
-      const user = await login('unknownuser', testPassword);
-      expect(user).toBeUndefined();
+    it('should return undefined if user is not found', async () => {
+      mockedDbGetUserByUsernameWithPassword.mockResolvedValue(undefined);
+      const result = await login('unknownuser', testPassword);
+      expect(result).toBeUndefined();
       expect(mockedBcryptCompare).not.toHaveBeenCalled();
     });
 
-    it('should return undefined if user is found but has no password hash in DB', async () => {
-      const userWithoutPasswordHash = { ...mockUserForLoginDB };
-      delete userWithoutPasswordHash.password;
-      mockDbInstance.get.mockResolvedValue(userWithoutPasswordHash);
-      const user = await login(testUsername, testPassword);
-      expect(user).toBeUndefined();
+    it('should return undefined if user has no password hash', async () => {
+      const userWithoutHash = { ...mockUserForLoginDB, passwordHash: undefined as any };
+      mockedDbGetUserByUsernameWithPassword.mockResolvedValue(userWithoutHash);
+      const result = await login(testUsername, testPassword);
+      expect(result).toBeUndefined();
       expect(mockedBcryptCompare).not.toHaveBeenCalled();
     });
 
     it('should return undefined if passwords do not match', async () => {
-      mockDbInstance.get.mockResolvedValue(mockUserForLoginDB);
-      mockedBcryptCompare.mockResolvedValue(false); // Simulate password mismatch
-
-      const user = await login(testUsername, 'wrongpassword');
-      expect(user).toBeUndefined();
+      mockedDbGetUserByUsernameWithPassword.mockResolvedValue(mockUserForLoginDB);
+      mockedBcryptCompare.mockResolvedValue(false);
+      const result = await login(testUsername, 'wrongpassword');
+      expect(result).toBeUndefined();
       expect(mockedBcryptCompare).toHaveBeenCalledWith('wrongpassword', storedHashedPassword);
     });
 
-    it('should return undefined if getDb returns null (db connection fails for _findUserByUsernameWithPassword)', async () => {
-      mockedGetDb.mockReturnValue(Promise.resolve(null)); // This affects _findUserByUsernameWithPassword
-      const user = await login(testUsername, testPassword);
-      expect(user).toBeUndefined();
-      expect(mockedBcryptCompare).not.toHaveBeenCalled();
+    it('should return undefined if _findUserByUsernameWithPassword throws', async () => {
+        mockedDbGetUserByUsernameWithPassword.mockRejectedValue(new Error('DB error for find with hash'));
+        const result = await login(testUsername, testPassword);
+        expect(result).toBeUndefined();
     });
 
-    it('should return undefined if bcrypt.compare throws an error', async () => {
-      mockDbInstance.get.mockResolvedValue(mockUserForLoginDB);
-      mockedBcryptCompare.mockRejectedValue(new Error('Compare bcrypt error')); // Simulate error during compare
-
+    it('should return undefined if bcrypt.compare throws', async () => {
+      mockedDbGetUserByUsernameWithPassword.mockResolvedValue(mockUserForLoginDB);
+      mockedBcryptCompare.mockRejectedValue(new Error('Compare bcrypt error'));
       const result = await login(testUsername, testPassword);
       expect(result).toBeUndefined();
     });
 
     it('should return undefined if JWT signing fails', async () => {
-      mockDbInstance.get.mockResolvedValue(mockUserForLoginDB);
+      mockedDbGetUserByUsernameWithPassword.mockResolvedValue(mockUserForLoginDB);
       mockedBcryptCompare.mockResolvedValue(true);
       mockedJwtSign.mockImplementation(() => { throw new Error('JWT sign error'); });
-
       const result = await login(testUsername, testPassword);
       expect(result).toBeUndefined();
-      expect(mockedJwtSign).toHaveBeenCalled(); // Ensure it was called
+      expect(mockedJwtSign).toHaveBeenCalled();
     });
   });
 });
