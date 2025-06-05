@@ -2,6 +2,7 @@
 
 import React, { forwardRef, useEffect, useRef, useImperativeHandle, useCallback } from 'react';
 import type { AutoSizeTextarea as AutoSizeTextareaType } from '@/web-components/auto-size-textarea';
+import { WebComponentErrorBoundary } from '../../web-components/error-handling';
 
 declare global {
   namespace JSX {
@@ -165,8 +166,13 @@ const AutoSizeTextarea = forwardRef<HTMLTextAreaElement, AutoSizeTextareaProps>(
       disabled,
     };
 
-    // @ts-ignore - mce-autosize-textarea is a custom element
-    return <mce-autosize-textarea {...elementProps} />;
+    // Wrap the web component with the error boundary
+    return (
+      <WebComponentErrorBoundary>
+        {/* @ts-ignore - mce-autosize-textarea is a custom element */}
+        <mce-autosize-textarea {...elementProps} />
+      </WebComponentErrorBoundary>
+    );
   }
 );
 
