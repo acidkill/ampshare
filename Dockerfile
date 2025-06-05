@@ -46,6 +46,9 @@ COPY --from=builder /app/package.json ./package.json
 # If you have a next.config.js, ensure it's copied as well:
 # COPY --from=builder /app/next.config.js ./next.config.js
 
+# Create data directory and set permissions for SQLite DB
+RUN mkdir -p /app/data && chown -R nextjs:nodejs /app/data
+
 # Set the user to the non-root user created above
 USER nextjs
 
