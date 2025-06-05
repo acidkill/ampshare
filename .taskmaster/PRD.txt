@@ -1,0 +1,84 @@
+# Product Requirements Document: AmpShare Enhancements
+
+## 1. Overview
+
+This document outlines the requirements for testing, improving, and Dockerizing the AmpShare application. The goal is to ensure a robust, feature-rich, and easily deployable application.
+
+## 2. Key Tasks
+
+### 2.1. Comprehensive Testing
+
+**Objective:** Ensure application stability and correctness through thorough testing.
+
+**Requirements:**
+*   **T1.1 Run Existing Tests:** Execute all current tests using `npm run test` to establish a baseline.
+*   **T1.2 Identify Test Gaps:** Review `docs/blueprint.md` and existing code to identify features lacking test coverage. This includes:
+    *   Scheduling interface logic.
+    *   Combined schedule display rendering and data handling.
+    *   Conflict detection (mocking AI responses).
+    *   Real-time alert mechanisms (if any frontend/backend logic exists).
+    *   User management UI interactions.
+    *   Authentication edge cases not covered in `auth.test.ts`.
+*   **T1.3 Write New Unit Tests:** Develop unit tests for individual functions and components, particularly in `src/lib/` and any new UI components. Focus on `auth.ts` for any missing coverage and new logic in `src/app/`.
+*   **T1.4 Write New Integration Tests:** Develop integration tests for user flows, such as:
+    *   User login and navigation.
+    *   Creating/editing a schedule.
+    *   Viewing combined schedules.
+    *   Admin onboarding a new user.
+*   **T1.5 Ensure Test Coverage:** Aim for a significant increase in overall test coverage.
+
+### 2.2. Application Enhancements
+
+**Objective:** Implement core features outlined in `docs/blueprint.md` and improve overall application quality.
+
+**Requirements:**
+*   **A2.1 Implement Scheduling Interface:** Develop the UI for weekly scheduling per appliance, per apartment.
+    *   Ensure adherence to style guidelines (Muted blue, Light gray, Warm orange, 'Inter' font).
+    *   Use clear, minimalist icons for appliances.
+    *   Implement a clean, grid-based layout.
+*   **A2.2 Implement Combined Schedule Display:** Create a view that shows schedules for both apartments, using color-coding for clarity.
+*   **A2.3 Implement Conflict Detection & Resolution:**
+    *   Develop a module to detect scheduling conflicts.
+    *   Integrate a placeholder or mock for the AI-powered conflict recommendations.
+    *   Provide a UI for manual override of conflicts.
+*   **A2.4 Implement Real-time Alerts:** Design and implement a system for notifying users about appliance use and potential overloads (this may require backend and frontend changes).
+*   **A2.5 Implement User Management UI:** Create an admin interface for onboarding new users.
+*   **A2.6 Refine Authentication:** Review `src/lib/auth.ts` and `src/types.ts` for any improvements or missing logic based on the four-user, two-apartment model.
+*   **A2.7 Database Integration (Future Consideration):** While `src/lib/db.ts` is a mock, plan for potential future integration with a real database.
+*   **A2.8 UI/UX Polish:** Apply subtle transitions and animations as per `docs/blueprint.md`.
+
+### 2.3. Dockerization
+
+**Objective:** Containerize the AmpShare application for consistent deployment and scalability.
+
+**Requirements:**
+*   **D3.1 Create Dockerfile:**
+    *   Develop a `Dockerfile` for the Next.js application.
+    *   Use a Node.js base image appropriate for Next.js.
+    *   Implement a multi-stage build (e.g., a build stage and a production stage) to optimize image size and security.
+    *   Copy necessary files (`package.json`, `package-lock.json`, `next.config.js`, `public/`, `src/`, etc.).
+    *   Install dependencies using `npm ci` for production.
+    *   Build the application using `npm run build`.
+    *   Expose the correct port (default Next.js is 3000).
+    *   Set the appropriate `CMD` to run the application (e.g., `npm run start`).
+*   **D3.2 Configure `docker-compose.yml`:**
+    *   Review and update the existing `docker-compose.yml`.
+    *   Define a service for the AmpShare application, building from the `Dockerfile`.
+    *   Map ports (e.g., host 3000 to container 3000).
+    *   Set up environment variables if needed.
+    *   Consider adding volumes for persistent data if applicable (though not immediately required for a mock DB).
+*   **D3.3 Test Dockerized Application:** Build and run the application using Docker Compose. Verify that all features work as expected in the containerized environment.
+*   **D3.4 Documentation:** Briefly document how to build and run the application using Docker.
+
+## 3. Non-Functional Requirements
+
+*   **NFR1 Performance:** The application should be responsive, with acceptable load times.
+*   **NFR2 Security:** Follow security best practices, especially for authentication and any future database interactions.
+*   **NFR3 Maintainability:** Code should be well-organized, commented where necessary, and follow project conventions.
+*   **NFR4 Scalability:** Dockerization should facilitate easier scaling in the future.
+
+## 4. Style and Conventions
+
+*   Adhere to style guidelines in `docs/blueprint.md`.
+*   Follow coding conventions established in the existing codebase.
+*   Ensure linting (`npm run lint`) passes for all new/modified code.

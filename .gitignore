@@ -70,3 +70,19 @@ yalc.lock
 
 # TypeScript
 *.tsbuildinfo
+
+# Added by Task Master AI
+# Logs
+logs
+*.log
+dev-debug.log
+# Dependency directories
+node_modules/
+# Environment variables
+.env
+.idea
+.vscode
+# OS specific
+# Task files
+tasks.json
+tasks/ 
