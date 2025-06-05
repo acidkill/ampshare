@@ -113,4 +113,76 @@ describe('Auth Library', () => {
       expect(user).toBeUndefined();
     });
   });
+
+  describe('updateUserPassword', () => {
+    const userIdToUpdate = 'user1';
+    const newPassword = 'newSecurePassword123';
+    const newHashedPassword = 'hashedNewSecurePassword123';
+
+    beforeEach(() => {
+      mockedHash.mockResolvedValue(newHashedPassword);
+      // Ensure getUserById (called internally) also uses a fresh mock for its db call
+      // For simplicity here, we assume a successful update leads to a successful fetch.
+      // A more granular test could mock db.get for the internal getUserById separately.
+      mockDbInstance.get.mockImplementation(async (query: string, id: string) => {
+        if (query.includes('SELECT * FROM users WHERE id = ?') && id === userIdToUpdate) {
+          return { ...mockUserNoForceChange, id: userIdToUpdate, forcePasswordChange: 0 };
+        }
+        return undefined;
+      });
+    });
+
+    it('should update password, hash it, set forcePasswordChange to 0, and return updated user', async () => {
+      mockDbInstance.run.mockResolvedValue({ changes: 1 });
+
+      const updatedUser = await updateUserPassword(userIdToUpdate, newPassword);
+
+      expect(mockedHash).toHaveBeenCalledWith(newPassword, 10);
+      expect(mockDbInstance.run).toHaveBeenCalledWith(
+        'UPDATE users SET password = ?, forcePasswordChange = 0 WHERE id = ?',
+        newHashedPassword,
+        userIdToUpdate
+      );
+      expect(mockDbInstance.get).toHaveBeenCalledWith('SELECT * FROM users WHERE id = ?', userIdToUpdate); // Check internal getUserById call
+      expect(updatedUser).toBeDefined();
+      expect(updatedUser?.id).toBe(userIdToUpdate);
+      expect(updatedUser?.forcePasswordChange).toBe(false);
+    });
+
+    it('should return undefined if user ID to update is not found (db.run affects 0 rows)', async () => {
+      mockDbInstance.run.mockResolvedValue({ changes: 0 }); // Simulate no user found/updated
+      const updatedUser = await updateUserPassword('nonexistentUser', newPassword);
+      expect(mockDbInstance.run).toHaveBeenCalledWith(
+        'UPDATE users SET password = ?, forcePasswordChange = 0 WHERE id = ?',
+        newHashedPassword,
+        'nonexistentUser'
+      );
+      expect(updatedUser).toBeUndefined();
+    });
+
+    it('should return undefined if getDb returns null (db connection fails)', async () => {
+      mockedGetDb.mockReturnValue(Promise.resolve(null));
+      const updatedUser = await updateUserPassword(userIdToUpdate, newPassword);
+      expect(mockedHash).not.toHaveBeenCalled(); // Hash shouldn't be called if DB fails first
+      expect(mockDbInstance.run).not.toHaveBeenCalled();
+      expect(updatedUser).toBeUndefined();
+    });
+
+    it('should return undefined if hashing fails', async () => {
+      mockedHash.mockRejectedValue(new Error('Hashing failed'));
+      const updatedUser = await updateUserPassword(userIdToUpdate, newPassword);
+      expect(mockedHash).toHaveBeenCalledWith(newPassword, 10);
+      expect(mockDbInstance.run).not.toHaveBeenCalled();
+      expect(updatedUser).toBeUndefined();
+      // You might want to assert that an error is logged or handled
+    });
+
+    it('should return undefined if db.run fails (e.g., database error during update)', async () => {
+      mockDbInstance.run.mockRejectedValue(new Error('DB run error'));
+      const updatedUser = await updateUserPassword(userIdToUpdate, newPassword);
+      expect(mockedHash).toHaveBeenCalledWith(newPassword, 10);
+      expect(mockDbInstance.run).toHaveBeenCalled();
+      expect(updatedUser).toBeUndefined();
+    });
+  });
 });
