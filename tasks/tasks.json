@@ -1,0 +1,136 @@
+{
+  "tasks": [
+    {
+      "id": 1,
+      "title": "Implement Web Component Registration Singleton",
+      "description": "Create a singleton pattern for web component registration to prevent duplicate component registration errors.",
+      "details": "Create a registry.ts file in the web-components directory that implements a singleton pattern for web component registration. The implementation should:\n\n1. Maintain a Set of registered component names\n2. Provide a registerWebComponent function that checks if a component is already registered before defining it\n3. Prevent duplicate registrations by checking both customElements.get() and the internal Set\n\nImplementation should follow the pattern provided in the PRD:\n\n```typescript\n// web-components/registry.ts\nconst registeredComponents = new Set<string>();\n\nexport function registerWebComponent(name: string, constructor: CustomElementConstructor) {\n  if (!customElements.get(name) && !registeredComponents.has(name)) {\n    customElements.define(name, constructor);\n    registeredComponents.add(name);\n  }\n}\n```",
+      "testStrategy": "Write unit tests to verify:\n1. Components are registered successfully on first attempt\n2. Duplicate registrations are prevented\n3. The Set correctly tracks registered components\n4. The function works with various component types",
+      "priority": "high",
+      "dependencies": [],
+      "status": "done",
+      "subtasks": []
+    },
+    {
+      "id": 2,
+      "title": "Implement Error Handling for Web Components",
+      "description": "Add error boundaries and graceful degradation for web component initialization failures.",
+      "details": "Enhance the web component registration system with proper error handling:\n\n1. Create an error boundary component that can wrap web components\n2. Implement try/catch blocks in the registration function\n3. Add logging for registration failures\n4. Create fallback UI for when components fail to initialize\n\n```typescript\n// web-components/error-handling.ts\nexport function safeRegisterWebComponent(name: string, constructor: CustomElementConstructor) {\n  try {\n    registerWebComponent(name, constructor);\n    return true;\n  } catch (error) {\n    console.error(`Failed to register web component ${name}:`, error);\n    // Log to monitoring service if available\n    return false;\n  }\n}\n\n// Component wrapper with error boundary\nexport class WebComponentErrorBoundary extends React.Component {\n  state = { hasError: false };\n  \n  static getDerivedStateFromError(error) {\n    return { hasError: true };\n  }\n  \n  componentDidCatch(error, errorInfo) {\n    console.error(\"Web component error:\", error, errorInfo);\n    // Log to monitoring service\n  }\n  \n  render() {\n    if (this.state.hasError) {\n      return <div className=\"component-fallback\">Component failed to load</div>;\n    }\n    return this.props.children;\n  }\n}\n```",
+      "testStrategy": "1. Test error handling by intentionally causing registration errors\n2. Verify error logging works correctly\n3. Test the error boundary component with both working and failing components\n4. Verify fallback UI appears when components fail",
+      "priority": "high",
+      "dependencies": [
+        1
+      ],
+      "status": "pending",
+      "subtasks": []
+    },
+    {
+      "id": 3,
+      "title": "Centralize Web Component Registration",
+      "description": "Refactor the codebase to centralize all web component registrations and implement proper cleanup during hot module replacement.",
+      "details": "Create a centralized system for web component registration:\n\n1. Create an index.ts file that imports and registers all web components\n2. Implement a cleanup mechanism for hot module replacement\n3. Ensure components are only registered once during the application lifecycle\n\n```typescript\n// web-components/index.ts\nimport { registerWebComponent } from './registry';\n\n// Import all component constructors\nimport { AutosizeTextarea } from './autosize-textarea';\nimport { OtherComponent } from './other-component';\n// ... other components\n\n// Register all components at once\nexport function registerAllComponents() {\n  registerWebComponent('mce-autosize-textarea', AutosizeTextarea);\n  registerWebComponent('mce-other-component', OtherComponent);\n  // ... register other components\n}\n\n// For hot module replacement support\nif (module.hot) {\n  module.hot.dispose(() => {\n    // Any cleanup needed for HMR\n    console.log('HMR: Web components module disposed');\n  });\n  \n  module.hot.accept(() => {\n    console.log('HMR: Web components module updated');\n  });\n}\n\n// Register all components by default\nregisterAllComponents();\n```",
+      "testStrategy": "1. Test that all components are registered correctly\n2. Verify hot module replacement works without errors\n3. Test that components are registered only once even after code changes\n4. Verify no console errors related to duplicate registration",
+      "priority": "high",
+      "dependencies": [
+        1,
+        2
+      ],
+      "status": "pending",
+      "subtasks": []
+    },
+    {
+      "id": 4,
+      "title": "Implement Multi-stage Docker Build",
+      "description": "Create a multi-stage Dockerfile to optimize the build process and reduce final image size.",
+      "details": "Create a new Dockerfile that implements multi-stage builds following the pattern in the PRD:\n\n```dockerfile\n# Stage 1: Build\nFROM node:20-alpine AS builder\nWORKDIR /app\n\n# Copy package files and install dependencies\nCOPY package*.json ./\nRUN npm ci\n\n# Copy source code and build\nCOPY . .\nRUN npm run build\n\n# Stage 2: Production\nFROM node:20-alpine\nWORKDIR /app\nENV NODE_ENV=production\n\n# Copy only production dependencies\nCOPY --from=builder /app/package*.json ./\nRUN npm ci --only=production && \\\n    npm cache clean --force\n\n# Copy build output and public files\nCOPY --from=builder /app/.next ./.next\nCOPY --from=builder /app/public ./public\nCOPY --from=builder /app/next.config.js ./\n\n# Set user to non-root for security\nUSER node\n\nEXPOSE 3000\nCMD [\"npm\", \"start\"]\n```\n\nThis implementation:\n1. Uses Alpine-based images for smaller size\n2. Separates build and production stages\n3. Only installs production dependencies in the final image\n4. Cleans npm cache to reduce image size\n5. Uses a non-root user for security",
+      "testStrategy": "1. Build the Docker image and verify it builds successfully\n2. Measure the final image size to ensure it's under 200MB\n3. Test the application runs correctly in the container\n4. Verify build layers are properly cached on subsequent builds",
+      "priority": "high",
+      "dependencies": [],
+      "status": "in-progress",
+      "subtasks": []
+    },
+    {
+      "id": 5,
+      "title": "Optimize Docker Layer Caching",
+      "description": "Improve the Docker build process by optimizing layer caching for dependencies.",
+      "details": "Enhance the Dockerfile to better leverage Docker's layer caching:\n\n1. Separate dependency installation from code changes\n2. Use .dockerignore to exclude unnecessary files\n3. Implement proper ordering of layers from least to most frequently changed\n\n```dockerfile\n# Create a .dockerignore file\nnode_modules\n.git\n.github\n.next\nout\n*.md\n*.log\n\n# Update the Dockerfile to optimize caching\n# Stage 1: Dependencies\nFROM node:20-alpine AS deps\nWORKDIR /app\n\n# Copy only files needed for dependency installation\nCOPY package.json package-lock.json ./\nRUN npm ci\n\n# Stage 2: Builder\nFROM node:20-alpine AS builder\nWORKDIR /app\n\n# Copy dependencies from previous stage\nCOPY --from=deps /app/node_modules ./node_modules\n\n# Copy source code\nCOPY . .\n\n# Build the application\nRUN npm run build\n\n# Stage 3: Runner\nFROM node:20-alpine AS runner\nWORKDIR /app\nENV NODE_ENV=production\n\n# Copy only necessary files for production\nCOPY --from=builder /app/package.json ./\nCOPY --from=builder /app/package-lock.json ./\nCOPY --from=builder /app/next.config.js ./\nCOPY --from=builder /app/public ./public\nCOPY --from=builder /app/.next ./.next\n\n# Install only production dependencies\nRUN npm ci --only=production && \\\n    npm cache clean --force\n\nUSER node\nEXPOSE 3000\nCMD [\"npm\", \"start\"]\n```",
+      "testStrategy": "1. Measure build times with and without cached layers\n2. Verify that changing source code doesn't invalidate dependency layers\n3. Test rebuilding after dependency changes\n4. Verify final image size is under 200MB",
+      "priority": "medium",
+      "dependencies": [
+        4
+      ],
+      "status": "in-progress",
+      "subtasks": []
+    },
+    {
+      "id": 6,
+      "title": "Configure Next.js for Production Optimization",
+      "description": "Optimize Next.js configuration for production builds, including code splitting and static asset handling.",
+      "details": "Update the Next.js configuration to optimize for production:\n\n1. Configure proper code splitting\n2. Optimize static asset handling\n3. Enable production optimizations\n\n```javascript\n// next.config.js\nmodule.exports = {\n  reactStrictMode: true,\n  productionBrowserSourceMaps: false,\n  compress: true,\n  poweredByHeader: false,\n  images: {\n    domains: [], // Add domains for external images if needed\n    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],\n    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],\n    minimumCacheTTL: 60,\n  },\n  experimental: {\n    optimizeCss: true,\n    scrollRestoration: true,\n  },\n  webpack: (config, { dev, isServer }) => {\n    // Add any custom webpack configurations here\n    if (!dev && !isServer) {\n      // Enable tree shaking and dead code elimination\n      config.optimization.usedExports = true;\n    }\n    return config;\n  },\n};\n```",
+      "testStrategy": "1. Compare build output size before and after optimization\n2. Test application load time in production mode\n3. Verify code splitting works correctly by analyzing network requests\n4. Test static asset loading performance",
+      "priority": "medium",
+      "dependencies": [],
+      "status": "in-progress",
+      "subtasks": []
+    },
+    {
+      "id": 7,
+      "title": "Implement Lazy Loading for Non-Critical Components",
+      "description": "Implement lazy loading for non-critical web components to improve initial load performance.",
+      "details": "Modify the web component registration system to support lazy loading:\n\n1. Create a mechanism to load components on demand\n2. Implement dynamic imports for non-critical components\n3. Add intersection observer to load components when they become visible\n\n```typescript\n// web-components/lazy-registry.ts\nimport { registerWebComponent } from './registry';\n\nconst loadedComponents = new Set<string>();\n\nexport function lazyLoadComponent(name: string, importFn: () => Promise<any>) {\n  if (loadedComponents.has(name)) return Promise.resolve();\n  \n  return importFn().then(module => {\n    const constructor = module.default || module[name];\n    if (constructor) {\n      registerWebComponent(name, constructor);\n      loadedComponents.add(name);\n    }\n    return constructor;\n  }).catch(error => {\n    console.error(`Failed to lazy load component ${name}:`, error);\n    return null;\n  });\n}\n\n// Usage example\nexport function setupLazyComponents() {\n  // Set up intersection observer for elements that need lazy loading\n  const observer = new IntersectionObserver((entries) => {\n    entries.forEach(entry => {\n      if (entry.isIntersecting) {\n        const element = entry.target;\n        const componentName = element.getAttribute('data-component');\n        if (componentName === 'mce-autosize-textarea') {\n          lazyLoadComponent('mce-autosize-textarea', () => import('./autosize-textarea'));\n        }\n        // Unobserve after loading\n        observer.unobserve(element);\n      }\n    });\n  });\n  \n  // Observe elements that should trigger lazy loading\n  document.querySelectorAll('[data-component]').forEach(el => {\n    observer.observe(el);\n  });\n}\n```",
+      "testStrategy": "1. Test that components load correctly when they become visible\n2. Verify initial page load time improves with lazy loading\n3. Test error handling when component loading fails\n4. Verify components work correctly after being lazy loaded",
+      "priority": "medium",
+      "dependencies": [
+        3
+      ],
+      "status": "pending",
+      "subtasks": []
+    },
+    {
+      "id": 8,
+      "title": "Audit and Update Dependencies",
+      "description": "Audit the project dependencies, remove unused ones, and consolidate duplicates to optimize build time and application size.",
+      "details": "Perform a comprehensive dependency audit:\n\n1. Run npm audit to identify security issues\n2. Use tools like depcheck to find unused dependencies\n3. Identify and consolidate duplicate dependencies\n4. Update dependencies to their latest compatible versions\n\nImplementation steps:\n\n```bash\n# Install tools for dependency analysis\nnpm install -g npm-check depcheck\n\n# Run security audit\nnpm audit\n\n# Find unused dependencies\ndepcheck\n\n# Check for outdated packages\nnpm outdated\n\n# Update dependencies (after careful review)\nnpm update\n```\n\nCreate a package.json cleanup script:\n\n```javascript\n// scripts/cleanup-dependencies.js\nconst fs = require('fs');\nconst path = require('path');\nconst { execSync } = require('child_process');\n\n// Read package.json\nconst packageJsonPath = path.resolve(__dirname, '../package.json');\nconst packageJson = require(packageJsonPath);\n\n// List of dependencies to remove (based on depcheck results)\nconst dependenciesToRemove = [\n  // Add unused dependencies here\n];\n\n// Remove unused dependencies\ndependenciesToRemove.forEach(dep => {\n  delete packageJson.dependencies[dep];\n  delete packageJson.devDependencies[dep];\n});\n\n// Write updated package.json\nfs.writeFileSync(\n  packageJsonPath,\n  JSON.stringify(packageJson, null, 2) + '\\n'\n);\n\n// Reinstall dependencies\nconsole.log('Reinstalling dependencies...');\nexecSync('npm install', { stdio: 'inherit' });\n\nconsole.log('Dependencies cleanup complete!');\n```",
+      "testStrategy": "1. Verify the application works correctly after dependency updates\n2. Compare build times before and after dependency cleanup\n3. Run security audit to ensure no vulnerabilities remain\n4. Test application functionality to ensure no regressions",
+      "priority": "medium",
+      "dependencies": [],
+      "status": "pending",
+      "subtasks": []
+    },
+    {
+      "id": 9,
+      "title": "Update CI/CD Pipeline with New Build Process",
+      "description": "Update the CI/CD pipeline to incorporate the new build process, including caching for dependencies and proper versioning.",
+      "details": "Update the CI/CD pipeline configuration to incorporate the new build optimizations:\n\n1. Configure dependency caching\n2. Implement proper versioning\n3. Update build and deployment steps\n\nFor GitHub Actions:\n\n```yaml\n# .github/workflows/build-deploy.yml\nname: Build and Deploy\n\non:\n  push:\n    branches: [main]\n  pull_request:\n    branches: [main]\n\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v3\n      \n      - name: Set up Node.js\n        uses: actions/setup-node@v3\n        with:\n          node-version: '20'\n          cache: 'npm'\n      \n      - name: Install dependencies\n        run: npm ci\n      \n      - name: Run tests\n        run: npm test\n      \n      - name: Build application\n        run: npm run build\n      \n      - name: Set up Docker Buildx\n        uses: docker/setup-buildx-action@v2\n      \n      - name: Cache Docker layers\n        uses: actions/cache@v3\n        with:\n          path: /tmp/.buildx-cache\n          key: ${{ runner.os }}-buildx-${{ github.sha }}\n          restore-keys: |\n            ${{ runner.os }}-buildx-\n      \n      - name: Build and push Docker image\n        uses: docker/build-push-action@v4\n        with:\n          context: .\n          push: ${{ github.event_name != 'pull_request' }}\n          tags: ampshare:${{ github.sha }}\n          cache-from: type=local,src=/tmp/.buildx-cache\n          cache-to: type=local,dest=/tmp/.buildx-cache-new\n      \n      # Move cache to prevent it from growing indefinitely\n      - name: Move cache\n        run: |\n          rm -rf /tmp/.buildx-cache\n          mv /tmp/.buildx-cache-new /tmp/.buildx-cache\n```",
+      "testStrategy": "1. Test the CI/CD pipeline with the new configuration\n2. Verify build caching works correctly\n3. Compare build times in CI before and after changes\n4. Test deployment to ensure the application works correctly",
+      "priority": "medium",
+      "dependencies": [
+        4,
+        5
+      ],
+      "status": "pending",
+      "subtasks": []
+    },
+    {
+      "id": 10,
+      "title": "Create Documentation and Rollback Procedures",
+      "description": "Create comprehensive documentation for the new web component system and build process, including rollback procedures.",
+      "details": "Create comprehensive documentation covering all aspects of the implementation:\n\n1. Web Component Usage Guide\n2. Build and Deployment Instructions\n3. Rollback Procedures\n\nDocumentation should include:\n\n```markdown\n# Web Component System Documentation\n\n## Usage Guide\n\n### Registering a New Web Component\n\n```typescript\n// Import the registration function\nimport { registerWebComponent } from './web-components/registry';\n\n// Define your component\nclass MyComponent extends HTMLElement {\n  // Component implementation\n}\n\n// Register it\nregisterWebComponent('my-component', MyComponent);\n```\n\n### Lazy Loading Components\n\n```typescript\nimport { lazyLoadComponent } from './web-components/lazy-registry';\n\n// Load a component when needed\nlazyLoadComponent('my-lazy-component', () => import('./path/to/component'));\n```\n\n## Build and Deployment\n\n### Local Development\n\n```bash\n# Install dependencies\nnpm install\n\n# Start development server\nnpm run dev\n```\n\n### Production Build\n\n```bash\n# Build Docker image\ndocker build -t ampshare:latest .\n\n# Run container\ndocker run -p 3000:3000 ampshare:latest\n```\n\n## Rollback Procedures\n\n### Rolling Back a Deployment\n\n1. Identify the previous stable version tag\n2. Deploy the previous version:\n\n```bash\n# Pull the previous version\ndocker pull ampshare:previous-version\n\n# Stop the current container\ndocker stop ampshare-current\n\n# Start the previous version\ndocker run -d --name ampshare-rollback -p 3000:3000 ampshare:previous-version\n```\n\n3. Verify the rollback was successful by testing the application\n4. Update monitoring and alerts\n\n### Code Rollback\n\n1. Create a revert commit in git:\n\n```bash\ngit revert HEAD~1..HEAD\n```\n\n2. Push the revert commit\n3. Let the CI/CD pipeline deploy the reverted code\n```\n\nCreate a README.md file with this documentation and add it to the repository.",
+      "testStrategy": "1. Review documentation for accuracy and completeness\n2. Test rollback procedures in a staging environment\n3. Have team members follow the documentation to verify clarity\n4. Verify all commands and procedures work as documented",
+      "priority": "low",
+      "dependencies": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ],
+      "status": "pending",
+      "subtasks": []
+    }
+  ]
+}

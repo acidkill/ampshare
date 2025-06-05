@@ -1,0 +1,71 @@
+# Task ID: 5
+# Title: Optimize Docker Layer Caching
+# Status: in-progress
+# Dependencies: 4
+# Priority: medium
+# Description: Improve the Docker build process by optimizing layer caching for dependencies.
+# Details:
+Enhance the Dockerfile to better leverage Docker's layer caching:
+
+1. Separate dependency installation from code changes
+2. Use .dockerignore to exclude unnecessary files
+3. Implement proper ordering of layers from least to most frequently changed
+
+```dockerfile
+# Create a .dockerignore file
+node_modules
+.git
+.github
+.next
+out
+*.md
+*.log
+
+# Update the Dockerfile to optimize caching
+# Stage 1: Dependencies
+FROM node:20-alpine AS deps
+WORKDIR /app
+
+# Copy only files needed for dependency installation
+COPY package.json package-lock.json ./
+RUN npm ci
+
+# Stage 2: Builder
+FROM node:20-alpine AS builder
+WORKDIR /app
+
+# Copy dependencies from previous stage
+COPY --from=deps /app/node_modules ./node_modules
+
+# Copy source code
+COPY . .
+
+# Build the application
+RUN npm run build
+
+# Stage 3: Runner
+FROM node:20-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+
+# Copy only necessary files for production
+COPY --from=builder /app/package.json ./
+COPY --from=builder /app/package-lock.json ./
+COPY --from=builder /app/next.config.js ./
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next ./.next
+
+# Install only production dependencies
+RUN npm ci --only=production && \
+    npm cache clean --force
+
+USER node
+EXPOSE 3000
+CMD ["npm", "start"]
+```
+
+# Test Strategy:
+1. Measure build times with and without cached layers
+2. Verify that changing source code doesn't invalidate dependency layers
+3. Test rebuilding after dependency changes
+4. Verify final image size is under 200MB
