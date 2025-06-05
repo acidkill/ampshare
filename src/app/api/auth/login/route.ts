@@ -4,6 +4,21 @@ import bcrypt from 'bcryptjs';
 import { cookies } from 'next/headers';
 import { v4 as uuidv4 } from 'uuid';
 
+// Helper function to handle CORS headers
+function setCorsHeaders(headers: Headers, request: Request) {
+  const origin = request.headers.get('origin');
+  if (origin) {
+    headers.set('Access-Control-Allow-Origin', origin);
+    headers.set('Vary', 'Origin');
+  } else {
+    headers.set('Access-Control-Allow-Origin', '*');
+  }
+  headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  headers.set('Access-Control-Allow-Credentials', 'true');
+  return headers;
+}
+
 // Helper function to set cookie in the response headers
 function setCookie(headers: Headers, name: string, value: string, options: {
   httpOnly?: boolean;
@@ -24,17 +39,20 @@ function setCookie(headers: Headers, name: string, value: string, options: {
 }
 
 export async function POST(request: Request) {
-  console.log('DATABASE_URL_LOGIN_ROUTE: ' + process.env.DATABASE_URL);
+  console.log('=== LOGIN REQUEST ===');
+  console.log('Request URL:', request.url);
+  console.log('Request method:', request.method);
+  console.log('Request headers:', Object.fromEntries(request.headers.entries()));
+  
   // Handle preflight request
   if (request.method === 'OPTIONS') {
-    return new NextResponse(null, { 
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type',
-      } 
-    });
+    console.log('Handling OPTIONS preflight request');
+    const headers = new Headers();
+    setCorsHeaders(headers, request);
+    return new NextResponse(null, { headers });
   }
+  
+  console.log('Processing login request...');
 
   try {
     const { username, password } = await request.json();
@@ -92,32 +110,46 @@ export async function POST(request: Request) {
           console.log('Session created, returning user data');
           
           // Create response with user data
-          const response = new NextResponse(JSON.stringify(responseData), {
-            status: 200,
-            headers: {
-              'Content-Type': 'application/json',
-              'Access-Control-Allow-Origin': request.headers.get('origin') || '*',
-              'Access-Control-Allow-Credentials': 'true',
-              'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
-              'Pragma': 'no-cache',
-              'Expires': '0'
-            }
-          });
+          console.log('Login successful, creating response...');
+          
+          const headers = new Headers();
+          headers.set('Content-Type', 'application/json');
+          setCorsHeaders(headers, request);
+          
+          // Add cache control headers
+          headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+          headers.set('Pragma', 'no-cache');
+          headers.set('Expires', '0');
           
           // Set the session cookie in the response headers
+          const cookieOptions = {
+            httpOnly: true,
+            path: '/',
+            expires: expiresAt,
+            sameSite: 'lax' as const,
+            secure: process.env.NODE_ENV === 'production',
+            domain: 'beltalowda.ddns.net' // Removed leading dot for better compatibility
+          };
+          
+          console.log('Setting cookie with options:', JSON.stringify(cookieOptions, null, 2));
+          
           setCookie(
-            response.headers,
+            headers,
             'session_token',
             sessionToken,
-            {
-              httpOnly: true,
-              path: '/',
-              expires: expiresAt,
-              sameSite: 'lax',
-              secure: process.env.NODE_ENV === 'production'
-            }
+            cookieOptions
           );
           
+          // Create the response with the headers
+          const response = new NextResponse(JSON.stringify(responseData), {
+            status: 200,
+            headers
+          });
+          
+          // Log the response headers for debugging
+          console.log('Response headers:', JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2));
+          
+          console.log('Sending successful login response');
           return response;
         }
       }
