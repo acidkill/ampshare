@@ -108,7 +108,7 @@ export async function getAll<T>(query: string, params?: any): Promise<T[]> {
   return currentDb.all<T[]>(query, params);
 }
 
-export async function runNonSelect(query: string, params?: any): Promise<sqlite3.RunResult> {
+export async function runNonSelect(query: string, params?: any): Promise<any> {
   const currentDb = await getDb();
   return currentDb.run(query, params);
 }
@@ -710,7 +710,7 @@ export async function deleteConflict(id: string): Promise<boolean> {
     // ConflictScheduleEntries are deleted by ON DELETE CASCADE
     const result = await currentDb.run('DELETE FROM Conflicts WHERE id = ?', [id]);
     await currentDb.run('COMMIT');
-    return result.changes > 0;
+    return (result.changes ?? 0) > 0;
   } catch (error) {
     await currentDb.run('ROLLBACK');
     throw error;

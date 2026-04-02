@@ -30,136 +30,93 @@ const CombinedScheduleView: React.FC<CombinedScheduleViewProps> = ({
   appliances,
   apartments,
 }) => {
-  const headerCellStyle = {
-    border: '1px solid #D1D5DB',
-    padding: '0.5rem',
-    minHeight: '40px',
-    fontSize: '0.75rem',
-    textAlign: 'center' as 'center',
-    backgroundColor: '#F0F4F8',
-    fontWeight: 'bold',
-    color: '#2C3E50',
-  };
-
-  const timeSlotCellStyle = {
-    border: '1px solid #D1D5DB',
-    padding: '0.25rem',
-    minHeight: '50px',
-    fontSize: '0.7rem',
-    textAlign: 'center' as 'center',
-    position: 'relative' as 'relative',
-    overflow: 'hidden',
-  };
-
-  const entryStyle = (apartmentId: string) => ({
-    fontSize: '0.65rem',
-    padding: '2px',
-    margin: '1px 0',
-    borderRadius: '3px',
-    backgroundColor: apartmentColors[apartmentId] || apartmentColors.default,
-    color: '#333', // Darker text for better readability on light pastel backgrounds
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap' as 'nowrap',
-  });
+  const headerCellStyle = "border border-border p-2 min-h-[40px] text-xs text-center bg-background font-bold text-textDark";
+  const timeSlotCellStyle = "border border-border p-1 min-h-[60px] text-[0.7rem] text-center relative overflow-hidden bg-white transition-colors duration-200";
 
   return (
-    <div style={{ fontFamily: 'Inter, sans-serif', backgroundColor: '#FFFFFF', padding: '1rem' }}>
-      <h2 style={{ color: '#5D9CEC', marginBottom: '1rem' }}>Combined Weekly Schedule</h2>
-      <div 
-        style={{
-          display: 'grid',
-          gridTemplateColumns: `60px repeat(${daysOfWeek.length}, 1fr)`,
-          gridTemplateRows: `auto repeat(${timeSlots.length}, auto)`,
-          border: '1px solid #D1D5DB',
-          overflowX: 'auto',
-        }}
-      >
-        <div style={headerCellStyle}></div> {/* Empty top-left corner */}
-        {daysOfWeek.map(day => (
-          <div key={day} style={headerCellStyle}>{day}</div>
-        ))}
+    <div className="bg-white p-6 rounded-lg shadow-sm border border-border">
+      <h2 className="text-xl font-semibold text-primary mb-6">Combined Weekly Schedule</h2>
+      <div className="overflow-x-auto">
+        <div
+          className="grid border border-border bg-white min-w-[800px]"
+          style={{
+            gridTemplateColumns: `60px repeat(${daysOfWeek.length}, 1fr)`,
+            gridTemplateRows: `auto repeat(${timeSlots.length}, auto)`,
+          }}
+        >
+          <div className={headerCellStyle}></div> {/* Empty top-left corner */}
+          {daysOfWeek.map(day => (
+            <div key={day} className={headerCellStyle}>{day}</div>
+          ))}
 
         {timeSlots.map(time => (
           <React.Fragment key={time}>
-            <div style={headerCellStyle}>{time}</div>
+            <div className={headerCellStyle}>{time}</div>
             {daysOfWeek.map(day => {
               // Find entries for this specific day and time for all apartments
               const entriesForSlot = scheduleData.filter(
                 e => e.day === day && e.time === time
               );
 
+              // Basic conflict rule: More than 1 apartment using high voltage appliance at the same time
               const uniqueApartmentIdsInSlot = new Set(entriesForSlot.map(e => e.apartmentId));
               const isConflictingSlot = uniqueApartmentIdsInSlot.size > 1;
-
-              const currentSlotStyle = {
-                ...timeSlotCellStyle,
-                ...(isConflictingSlot && { 
-                  backgroundColor: '#FFEFCF', // Light orange/yellowish for conflict indication
-                  // border: `2px solid ${apartmentColors.conflict}` // Alternative: border highlight
-                }),
-              };
 
               return (
                 <div 
                   key={`${day}-${time}`}
-                  style={currentSlotStyle}
+                  className={`${timeSlotCellStyle} ${isConflictingSlot ? 'bg-orange-50 ring-1 ring-inset ring-accent' : ''}`}
                   aria-label={`Slot for ${day} at ${time}${isConflictingSlot ? ', conflicting bookings' : ''}`}
                 >
+                  {isConflictingSlot && (
+                    <div className="absolute top-0 right-0 p-0.5 text-accent" title="Potential Overload Conflict">
+                      ⚠️
+                    </div>
+                  )}
                   {entriesForSlot.length > 0 ? (
-                    entriesForSlot.map(entry => {
-                      const appliance = appliances.find(app => app.id === entry.applianceId);
-                      const apartment = apartments.find(apt => apt.id === entry.apartmentId);
-                      return (
-                        <div 
-                          key={`${entry.apartmentId}-${entry.applianceId}`}
-                          style={entryStyle(entry.apartmentId)}
-                          title={`${appliance?.name} for ${apartment?.name || entry.apartmentId}`}
-                        >
-                          {appliance?.icon} {appliance?.name?.substring(0,10)}{appliance && appliance.name.length > 10 ? '...' : ''}
-                        </div>
-                      );
-                    })
+                    <div className="flex flex-col gap-1 mt-1">
+                      {entriesForSlot.map((entry, index) => {
+                        const appliance = appliances.find(app => app.id === entry.applianceId);
+                        const apartment = apartments.find(apt => apt.id === entry.apartmentId);
+                        return (
+                          <div
+                            key={`${entry.apartmentId}-${entry.applianceId}-${index}`}
+                            className="text-[0.65rem] px-1 py-0.5 rounded text-gray-800 shadow-sm truncate flex items-center gap-1"
+                            style={{ backgroundColor: apartmentColors[entry.apartmentId] || apartmentColors.default }}
+                            title={`${appliance?.name} for ${apartment?.name || entry.apartmentId}`}
+                          >
+                            <span>{appliance?.icon}</span>
+                            <span className="truncate">{appliance?.name}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
                   ) : (
-                    <span style={{ color: '#A0A0A0', fontSize:'0.6rem' }}>Empty</span>
+                    <span className="text-gray-400 text-[0.6rem] absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">Empty</span>
                   )}
                 </div>
               );
             })}
           </React.Fragment>
         ))}
+        </div>
       </div>
       {/* Color Legend */}
-      <div style={{ marginTop: '1rem', padding: '0.5rem', backgroundColor: '#F0F4F8', borderRadius: '4px' }}>
-        <h4 style={{ margin: '0 0 0.5rem 0', color: '#2C3E50' }}>Legend:</h4>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
+      <div className="mt-6 p-4 bg-gray-50 rounded-md border border-border">
+        <h4 className="font-semibold text-textDark mb-3 text-sm uppercase tracking-wide">Legend:</h4>
+        <div className="flex flex-wrap gap-4">
           {apartments.map(apt => (
-            <div key={apt.id} style={{ display: 'flex', alignItems: 'center' }}>
+            <div key={apt.id} className="flex items-center">
               <span 
-                style={{
-                  display: 'inline-block',
-                  width: '1rem',
-                  height: '1rem',
-                  backgroundColor: apartmentColors[apt.id] || apartmentColors.default,
-                  marginRight: '0.5rem',
-                  border: '1px solid #CCC'
-                }}
+                className="w-4 h-4 mr-2 border border-gray-300 rounded-sm shadow-sm"
+                style={{ backgroundColor: apartmentColors[apt.id] || apartmentColors.default }}
               ></span>
-              <span style={{ fontSize: '0.8rem', color: '#333' }}>{apt.name}</span>
+              <span className="text-sm text-gray-700">{apt.name}</span>
             </div>
           ))}
-          <div style={{ display: 'flex', alignItems: 'center' }}>
-            <span 
-              style={{
-                display: 'inline-block',
-                width: '1rem',
-                height: '1rem',
-                backgroundColor: apartmentColors.conflict,
-                marginRight: '0.5rem',
-                border: '1px solid #CCC'
-              }}
-            ></span>
-            <span style={{ fontSize: '0.8rem', color: '#333' }}>Conflict</span>
+          <div className="flex items-center ml-auto bg-orange-100 px-3 py-1 rounded border border-orange-200">
+            <span className="mr-2 text-accent">⚠️</span>
+            <span className="text-sm text-gray-800 font-medium">Power Overload Conflict</span>
           </div>
         </div>
       </div>

@@ -56,20 +56,35 @@ export default function CombinedSchedulePage() {
   }, []);
 
   return (
-    <div style={{ padding: '20px', fontFamily: "'Inter', sans-serif" }}>
-      <h1 style={{ color: '#5D9CEC' }}>Combined Appliance Schedules</h1>
-      <p style={{ color: '#2C3E50' }}>View schedules for all apartments.</p>
+    <div className="p-6 max-w-7xl mx-auto">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-primary mb-2">Combined Appliance Schedules</h1>
+        <p className="text-textDark">View schedules and conflicts for all apartments.</p>
+      </div>
       
+      {error && (
+        <div className="bg-red-50 text-red-600 p-4 rounded-md mb-6 border border-red-200">
+          Error: {error}
+        </div>
+      )}
+
       {isLoading ? (
-        <div>Loading combined schedule...</div>
-      ) : error ? (
-        <div style={{ color: 'red' }}>Error: {error}</div>
+        <div className="flex justify-center items-center py-12">
+          <div className="animate-pulse flex space-x-4">
+            <div className="flex-1 space-y-4 py-1">
+              <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+              <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+            </div>
+          </div>
+        </div>
       ) : (
-        <CombinedScheduleView 
-          scheduleData={scheduleData}
-          appliances={MOCK_APPLIANCES}
-          apartments={apartments}
-        />
+        <div className="transition-opacity duration-200">
+          <CombinedScheduleView
+            scheduleData={scheduleData}
+            appliances={MOCK_APPLIANCES}
+            apartments={apartments}
+          />
+        </div>
       )}
     </div>
   );

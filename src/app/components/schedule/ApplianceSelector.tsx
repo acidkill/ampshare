@@ -25,42 +25,26 @@ const ApplianceSelector: React.FC<ApplianceSelectorProps> = ({ onApplianceSelect
     onApplianceSelected?.(newSelection);
   };
 
-  const buttonBaseStyle = {
-    fontFamily: 'Inter, sans-serif',
-    padding: '0.5rem 1rem',
-    margin: '0.25rem',
-    border: '1px solid #D1D5DB', // Light gray border
-    borderRadius: '4px',
-    cursor: 'pointer',
-    backgroundColor: '#F0F4F8', // Light gray background
-    color: '#2C3E50', // Darker text
-    transition: 'background-color 0.2s ease-in-out, border-color 0.2s ease-in-out',
-  };
-
-  const selectedButtonStyle = {
-    ...buttonBaseStyle,
-    backgroundColor: '#5D9CEC', // Muted blue for selection
-    color: '#FFFFFF', // White text for contrast
-    borderColor: '#4A8ADF', // Slightly darker blue for border
-  };
-
   return (
-    <div style={{ fontFamily: 'Inter, sans-serif', margin: '1rem 0' }}>
-      <h3 style={{ color: '#2C3E50', marginBottom: '0.5rem' }}>Select Appliance:</h3>
-      <div>
+    <div className="mb-4">
+      <h3 className="text-textDark font-semibold mb-2">Select Appliance:</h3>
+      <div className="flex flex-wrap gap-2">
         {applianceTypes.map(appliance => (
           <button
             key={appliance.id}
-            style={selectedApplianceId === appliance.id ? selectedButtonStyle : buttonBaseStyle}
+            className={`px-4 py-2 border rounded transition-all duration-200 ease-in-out flex items-center gap-2 ${
+              selectedApplianceId === appliance.id
+                ? 'bg-primary text-white border-blue-600 shadow-sm'
+                : 'bg-background text-textDark border-border hover:bg-gray-200'
+            }`}
             onClick={() => handleSelect(appliance.id)}
             aria-pressed={selectedApplianceId === appliance.id}
           >
-            {appliance.icon} {appliance.name}
+            <span className="text-lg">{appliance.icon}</span>
+            <span>{appliance.name}</span>
           </button>
         ))}
       </div>
-      {/* For debugging or simple display of selection */}
-      {/* {selectedApplianceId && <p style={{ marginTop: '0.5rem' }}>Selected: {applianceTypes.find(a => a.id === selectedApplianceId)?.name}</p>} */}
     </div>
   );
 };

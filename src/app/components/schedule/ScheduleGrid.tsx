@@ -22,38 +22,28 @@ const ScheduleGrid: React.FC<ScheduleGridProps> = ({
   onTimeSlotClick,
   appliances,
 }) => {
-  const headerCellStyle = {
-    border: '1px solid #D1D5DB',
-    padding: '0.5rem',
-    minHeight: '40px',
-    fontSize: '0.75rem',
-    textAlign: 'center' as 'center',
-    backgroundColor: '#F0F4F8',
-    fontWeight: 'bold',
-    color: '#2C3E50',
-  };
+  const headerCellStyle = "border border-border p-2 min-h-[40px] text-xs text-center bg-background font-bold text-textDark";
 
   return (
-    <div style={{ fontFamily: 'Inter, sans-serif', backgroundColor: '#FFFFFF', padding: '1rem' }}>
-      <h2 style={{ color: '#5D9CEC', marginBottom: '1rem' }}>Weekly Schedule</h2>
-      <div 
-        style={{
-          display: 'grid',
-          gridTemplateColumns: `60px repeat(${daysOfWeek.length}, 1fr)`,
-          gridTemplateRows: `auto repeat(${timeSlots.length}, auto)`,
-          border: '1px solid #D1D5DB',
-          overflowX: 'auto',
-        }}
-      >
-        <div style={headerCellStyle}></div> {/* Empty top-left corner */}
-        {daysOfWeek.map(day => (
-          <div key={day} style={headerCellStyle}>{day}</div>
-        ))}
+    <div className="bg-white p-6 rounded-lg shadow-sm border border-border">
+      <h2 className="text-xl font-semibold text-primary mb-6">Weekly Schedule</h2>
+      <div className="overflow-x-auto">
+        <div
+          className="grid border border-border bg-white min-w-[600px]"
+          style={{
+            gridTemplateColumns: `60px repeat(${daysOfWeek.length}, 1fr)`,
+            gridTemplateRows: `auto repeat(${timeSlots.length}, auto)`,
+          }}
+        >
+          <div className={headerCellStyle}></div> {/* Empty top-left corner */}
+          {daysOfWeek.map(day => (
+            <div key={day} className={headerCellStyle}>{day}</div>
+          ))}
 
-        {timeSlots.map(time => (
-          <React.Fragment key={time}>
-            <div style={headerCellStyle}>{time}</div>
-            {daysOfWeek.map(day => {
+          {timeSlots.map(time => (
+            <React.Fragment key={time}>
+              <div className={headerCellStyle}>{time}</div>
+              {daysOfWeek.map(day => {
               const entry = scheduleData.find(
                 e => 
                   e.day === day && 
@@ -76,6 +66,7 @@ const ScheduleGrid: React.FC<ScheduleGridProps> = ({
             })}
           </React.Fragment>
         ))}
+        </div>
       </div>
     </div>
   );

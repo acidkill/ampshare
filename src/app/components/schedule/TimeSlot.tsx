@@ -14,40 +14,21 @@ interface TimeSlotProps {
 const TimeSlot: React.FC<TimeSlotProps> = ({ day, time, scheduledApplianceDetails, onClick }) => {
   const isScheduled = !!scheduledApplianceDetails;
 
-  const baseStyle = {
-    border: '1px solid #D1D5DB',
-    padding: '0.5rem',
-    minHeight: '40px',
-    fontSize: '0.75rem',
-    textAlign: 'center' as 'center',
-    cursor: 'pointer',
-    backgroundColor: '#FFFFFF', // Default background
-    color: '#2C3E50', // Default text color
-    transition: 'background-color 0.2s ease-in-out',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  };
-
-  const scheduledStyle = {
-    ...baseStyle,
-    backgroundColor: '#5D9CEC', // Muted blue for scheduled items (as per primary color)
-    // Consider a different color if an *active selection for scheduling* is needed vs *already scheduled*
-    // For now, let's use a muted blue for any scheduled item. Conflict color is orange.
-    color: '#FFFFFF', // White text for contrast on blue
-  };
-
   return (
     <div 
-      style={isScheduled ? scheduledStyle : baseStyle}
-      onClick={onClick} // Use the passed onClick handler
+      className={`border border-border p-2 min-h-[40px] text-xs text-center cursor-pointer transition-colors duration-200 ease-in-out flex items-center justify-center ${
+        isScheduled
+          ? 'bg-primary text-white hover:bg-blue-500'
+          : 'bg-white text-textDark hover:bg-gray-50'
+      }`}
+      onClick={onClick}
       role="button"
       tabIndex={0}
       aria-pressed={isScheduled}
       aria-label={`Schedule slot for ${day} at ${time}${isScheduled ? `, scheduled: ${scheduledApplianceDetails.name}` : ', empty'}`}
       title={isScheduled ? scheduledApplianceDetails.name : `Click to schedule for ${time}`}
     >
-      {isScheduled ? scheduledApplianceDetails.icon : ''}
+      {isScheduled && <span className="text-lg">{scheduledApplianceDetails.icon}</span>}
     </div>
   );
 };

@@ -39,6 +39,7 @@ export interface Appliance {
 
 // Define ScheduleEntry type for storing scheduled items
 export interface ScheduleEntry {
+  id: string;         // Unique identifier for the schedule entry
   day: string;        // e.g., 'Mon', 'Tue'
   time: string;       // e.g., '09:00', '14:00'
   applianceId: string;
