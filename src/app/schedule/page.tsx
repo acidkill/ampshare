@@ -86,78 +86,112 @@ export default function SchedulePage() {
 
   const handleTimeSlotClick = useCallback(async (day: string, time: string) => {
     if (!selectedApplianceId) {
-      alert('Please select an appliance first.');
+      setError('Please select an appliance first.');
       return;
     }
     if (!selectedApartmentId) {
-      alert('Please select an apartment first.');
+      setError('Please select an apartment first.');
       return;
     }
+
+    setError(null);
 
     const existingEntry = scheduleData.find(
       entry => entry.day === day && entry.time === time && entry.apartmentId === selectedApartmentId
     );
 
-    setIsLoading(true);
-    setError(null);
+    // Optimistic Update
+    let oldScheduleData = [...scheduleData];
+    let temporaryId = `temp-${Date.now()}`;
 
-    try {
-      if (existingEntry) {
-        if (existingEntry.applianceId === selectedApplianceId || window.confirm('This slot is booked. Overwrite?')) {
+    if (existingEntry) {
+      if (existingEntry.applianceId === selectedApplianceId || window.confirm('This slot is booked. Overwrite?')) {
+        setScheduleData(prevData => prevData.filter(entry => entry.id !== existingEntry.id));
+
+        try {
           const res = await fetch('/api/schedules', {
             method: 'DELETE',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ id: existingEntry.id }),
           });
           if (!res.ok) throw new Error('Failed to delete schedule entry.');
-          setScheduleData(prevData => prevData.filter(entry => entry.id !== existingEntry.id));
           
-          // If overwriting, we need to create a new entry after deleting.
-          // For simplicity here, we'll just handle the delete-if-same case.
-          // A full overwrite would require another POST. Let's stick to simple for now.
           if (existingEntry.applianceId !== selectedApplianceId) {
-              // This part would be for overwrite, but we'll skip the immediate re-add for simplicity.
-              // The user would have to click again to add the new appliance.
-              alert('Previous booking cleared. Please click the slot again to schedule the new appliance.');
+            // Overwrite logic
+            const newEntry = { day, time, applianceId: selectedApplianceId, apartmentId: selectedApartmentId };
+            setScheduleData(prevData => [...prevData, { ...newEntry, id: temporaryId, userId: 'temp-user' }]);
+
+            const createRes = await fetch('/api/schedules', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(newEntry),
+            });
+            if (!createRes.ok) throw new Error('Failed to overwrite schedule entry.');
+            const serverEntry = await createRes.json();
+            setScheduleData(prevData => prevData.map(entry => entry.id === temporaryId ? serverEntry : entry));
           }
+        } catch (err: any) {
+          setError(err.message);
+          setScheduleData(oldScheduleData); // Revert optimistic update
         }
-      } else {
+      }
+    } else {
+      const newEntry = { day, time, applianceId: selectedApplianceId, apartmentId: selectedApartmentId };
+      setScheduleData(prevData => [...prevData, { ...newEntry, id: temporaryId, userId: 'temp-user' }]);
+
+      try {
         const res = await fetch('/api/schedules', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ day, time, applianceId: selectedApplianceId }),
+          body: JSON.stringify(newEntry),
         });
         if (!res.ok) throw new Error('Failed to create schedule entry.');
-        const newEntry: ScheduleEntry = await res.json();
-        setScheduleData(prevData => [...prevData, newEntry]);
+        const serverEntry = await res.json();
+        setScheduleData(prevData => prevData.map(entry => entry.id === temporaryId ? serverEntry : entry));
+      } catch (err: any) {
+        setError(err.message);
+        setScheduleData(oldScheduleData); // Revert optimistic update
       }
-    } catch (err: any) {
-      setError(err.message);
-      console.error(err);
-    } finally {
-      setIsLoading(false);
     }
   }, [selectedApplianceId, selectedApartmentId, scheduleData]);
 
   return (
-    <div style={{ padding: '20px', fontFamily: "'Inter', sans-serif" }}>
-      <h1 style={{ color: '#5D9CEC'}}>Appliance Scheduling</h1>
-      <p style={{ color: '#2C3E50' }}>Manage your appliance usage for the week.</p>
-      
-      {error && <div style={{ color: 'red', margin: '10px 0' }}>Error: {error}</div>}
-
-      <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start', margin: '20px 0' }}>
-        <ApplianceSelector onApplianceSelected={handleApplianceSelection} />
-        <ApartmentFilter 
-            apartments={apartments}
-            onApartmentSelected={handleApartmentSelection} 
-            initialSelectedId={selectedApartmentId}
-        />
+    <div className="p-6 max-w-7xl mx-auto">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-primary mb-2">Appliance Scheduling</h1>
+        <p className="text-textDark">Manage your appliance usage for the week.</p>
       </div>
       
-      {isLoading && <div>Loading schedule...</div>}
+      {error && (
+        <div className="bg-red-50 text-red-600 p-4 rounded-md mb-6 border border-red-200">
+          Error: {error}
+        </div>
+      )}
 
-      <div style={{ marginTop: '20px', opacity: isLoading ? 0.5 : 1 }}>
+      <div className="flex flex-col md:flex-row gap-6 items-start mb-8">
+        <div className="w-full md:w-1/2">
+          <ApplianceSelector onApplianceSelected={handleApplianceSelection} />
+        </div>
+        <div className="w-full md:w-1/2">
+          <ApartmentFilter
+              apartments={apartments}
+              onApartmentSelected={handleApartmentSelection}
+              initialSelectedId={selectedApartmentId}
+          />
+        </div>
+      </div>
+      
+      {isLoading && (
+        <div className="flex justify-center items-center py-4">
+          <div className="animate-pulse flex space-x-4">
+            <div className="flex-1 space-y-4 py-1">
+              <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className={`mt-6 transition-opacity duration-200 ${isLoading ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
         <ScheduleGrid 
           scheduleData={scheduleData}
           selectedApartmentId={selectedApartmentId}

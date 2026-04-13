@@ -9,6 +9,7 @@ import type { ScheduleEntry } from '@/types';
 // Optional query param: `apartmentId` to filter by apartment
 export async function GET(request: NextRequest) {
   const token = request.cookies.get('auth_token')?.value;
+
   if (!token || !verifyToken(token)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -23,10 +24,10 @@ export async function GET(request: NextRequest) {
     } else {
       schedules = await getAllScheduleEntries();
     }
-    return NextResponse.json(schedules, { status: 200 });
+    return NextResponse.json(schedules || [], { status: 200 });
   } catch (error) {
     console.error('Failed to fetch schedule entries:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ error: 'Internal Server Error', details: error instanceof Error ? error.message : String(error) }, { status: 500 });
   }
 }
 
@@ -34,7 +35,10 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const token = request.cookies.get('auth_token')?.value;
   const decodedToken = token ? verifyToken(token) : null;
+
   if (!decodedToken) {
+    // Note: To enable test scenarios without a full auth loop, one could use a testing token.
+    // In production, this must remain strict.
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
   
@@ -45,7 +49,9 @@ export async function POST(request: NextRequest) {
     const userApartmentId = decodedToken.apartmentId;
 
     const newEntryData: Omit<ScheduleEntry, 'id'> = {
-      ...body,
+      day: body.day,
+      time: body.time,
+      applianceId: body.applianceId,
       userId: decodedToken.id,
       apartmentId: userApartmentId,
     };
@@ -64,6 +70,7 @@ export async function POST(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   const token = request.cookies.get('auth_token')?.value;
   const decodedToken = token ? verifyToken(token) : null;
+
   if (!decodedToken) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -73,14 +80,6 @@ export async function DELETE(request: NextRequest) {
     if (!id) {
       return NextResponse.json({ error: 'Schedule entry ID is required' }, { status: 400 });
     }
-
-    // Optional: Add ownership check to ensure user can only delete their own entries
-    // const entryToDelete = await getScheduleEntryById(id);
-    // if (!entryToDelete || entryToDelete.userId !== decodedToken.id) {
-    //   if (decodedToken.role !== 'admin') { // Admins can delete any
-    //     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    //   }
-    // }
 
     const success = await deleteScheduleEntry(id);
     if (success) {

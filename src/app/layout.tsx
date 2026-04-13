@@ -1,3 +1,10 @@
+import './globals.css';
+
+export const metadata = {
+  title: 'AmpShare',
+  description: 'Manage your appliance schedules',
+};
+
 export default function RootLayout({
   children,
 }: {
@@ -5,7 +12,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body className="min-h-screen bg-background text-textDark font-sans antialiased">
+        {children}
+      </body>
     </html>
   )
 }

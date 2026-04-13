@@ -26,27 +26,16 @@ const ApartmentFilter: React.FC<ApartmentFilterProps> = ({ apartments, onApartme
     onApartmentSelected(newSelection);
   };
 
-  const selectStyle = {
-    fontFamily: 'Inter, sans-serif',
-    padding: '0.5rem 0.75rem',
-    margin: '0.25rem 0',
-    border: '1px solid #D1D5DB', // Light gray border
-    borderRadius: '4px',
-    backgroundColor: '#FFFFFF',
-    color: '#2C3E50',
-    minWidth: '200px',
-  };
-
   return (
-    <div style={{ fontFamily: 'Inter, sans-serif', margin: '1rem 0' }}>
-      <label htmlFor="apartment-filter" style={{ color: '#2C3E50', marginRight: '0.5rem', display: 'block', marginBottom: '0.25rem' }}>
+    <div className="mb-4">
+      <label htmlFor="apartment-filter" className="block text-textDark font-semibold mb-2">
         Filter by Apartment:
       </label>
       <select 
         id="apartment-filter"
         value={selectedApartmentId || ''}
         onChange={handleSelect}
-        style={selectStyle}
+        className="w-full md:w-auto min-w-[200px] p-2 border border-border rounded bg-white text-textDark focus:ring-2 focus:ring-primary focus:border-transparent outline-none disabled:bg-gray-100 disabled:text-gray-500"
         disabled={apartments.length === 0}
       >
         <option value="">{apartments.length > 0 ? 'Select Apartment' : 'Loading...'}</option>
